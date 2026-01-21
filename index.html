@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory System Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; }
+        .form-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; transition: all 0.2s; }
+        /* Focus color: Green-600 (#16a34a) */
+        .form-input:focus { border-color: #16a34a; ring: 2px; ring-color: #16a34a; }
+        /* Error Input Style */
+        .form-input.error { border-color: #ef4444; ring: 2px; ring-color: #ef4444; }
+        .tab-btn { padding: 10px; flex: 1; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600; color: #6b7280; }
+        /* Active tab color: Green-600 */
+        .tab-btn.active { border-bottom-color: #16a34a; color: #16a34a; }
+        #reader video { object-fit: cover; border-radius: 0.5rem; }
+        /* Scrollbar for suggestions */
+        .suggestion-list::-webkit-scrollbar { width: 6px; }
+        .suggestion-list::-webkit-scrollbar-track { background: #f1f1f1; }
+        .suggestion-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col items-center p-2 sm:p-4">
+
+    <!-- Added min-h-[600px] to make the window taller -->
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden relative mb-20 min-h-[600px]">
+        
+        <!-- Header: Green -->
+        <div class="bg-green-600 p-5 flex justify-between items-center">
+            <div>
+                <h1 class="text-white text-xl font-bold">ระบบลงทะเบียนอุปกรณ์-Salaosot</h1>
+                <p class="text-green-100 text-xs">QR Code Inventory System</p>
+            </div>
+            <!-- Removed Settings Button -->
+            <div class="text-white opacity-80 text-xs">
+                <i class="fas fa-check-circle"></i> พร้อมใช้งาน
+            </div>
+        </div>
+
+        <!-- Removed Settings Panel -->
+
+        <!-- Tabs Navigation -->
+        <div class="flex border-b border-gray-200">
+            <div id="tabRegister" onclick="switchTab('register')" class="tab-btn active"><i class="fas fa-plus-circle mr-1"></i> ลงทะเบียน</div>
+            <div id="tabSearch" onclick="switchTab('search')" class="tab-btn"><i class="fas fa-search mr-1"></i> ค้นหา/แก้ไข</div>
+        </div>
+
+        <!-- ================= PAGE 1: REGISTER ================= -->
+        <div id="registerView" class="p-6 space-y-4">
+            
+            <!-- Moved Text to Top & Increased Font Size -->
+            <p class="text-base text-gray-700 font-medium text-center bg-gray-50 p-2 rounded border border-gray-200">
+                วิธีการตั้งรหัส: หมวดหมู่-รหัสสาขา-วันที่ลงทะเบียน-เครื่องที่ <br>
+                ตัวอย่าง: <span class="font-bold text-indigo-600">PC102026012101</span>
+            </p>
+
+            <form id="itemForm" class="space-y-4">
+                <input type="hidden" name="action" value="register">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">รหัสอุปกรณ์ / Barcode / SKU</label>
+                    <input type="text" name="Item Code" id="regItemCode" required class="form-input" placeholder="พิมพ์รหัสสินค้า...">
+                    <!-- Duplicate Warning Message -->
+                    <p id="duplicateWarning" class="hidden text-xs text-red-500 mt-1 font-bold">
+                        <i class="fas fa-exclamation-circle"></i> รหัสนี้มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">ชื่ออุปกรณ์</label>
+                        <div class="relative">
+                            <input type="text" name="Item Name" id="regItemName" required class="form-input w-full" placeholder="ชื่อสินค้า" autocomplete="off">
+                            <div id="regNameSuggestions" class="hidden absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b-lg shadow-xl z-50 max-h-60 overflow-y-auto suggestion-list">
+                                <!-- Suggestions injected here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่</label>
+                        <select name="Category" class="form-input bg-white">
+                            <option value="คอมพิวเตอร์">PC-คอมพิวเตอร์</option>
+                            <option value="ปริ้นเตอร์/เครื่องพิมพ์ฉลาก">PT-ปริ้นเตอร์/เครื่องพิมพ์ฉลาก</option>
+                            <option value="โทรศัพท์/แทปเลต">PH-โทรศัพท์/แทปเลต</option>
+                            <option value="อุปกรณ์พ่วงคอมพิวเตอร์อื่นๆ">EP-อุปกรณ์พ่วงคอมพิวเตอร์อื่นๆ</option>
+                            <option value="อุปกรณ์อิเลคทรอนิกส์อื่นๆ">EE-อุปกรณ์อิเลคทรอนิกส์อื่นๆ</option>
+                            <option value="กล้องวงจรปิด">CA-กล้องวงจรปิด</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="text-xs text-gray-500">เครื่องที่</label><input type="text" name="MachineNo" class="form-input" placeholder="เช่น 1"></div>
+                    <div><label class="text-xs text-gray-500">หมดประกัน</label><input type="date" name="WarrantyDate" class="form-input text-sm"></div>
+                    <!-- Branch Autocomplete -->
+                    <div>
+                        <label class="text-xs text-gray-500">สาขา</label>
+                        <div class="relative">
+                            <input type="text" name="Branch" id="regBranch" class="form-input w-full" placeholder="เลือกสาขา..." autocomplete="off">
+                            <div id="branchSuggestions" class="hidden absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b-lg shadow-xl z-50 max-h-60 overflow-y-auto suggestion-list">
+                                <!-- Suggestions injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Spec Field -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">สเปค / รายละเอียด(**ไม่ต้องใส่)</label>
+                    <textarea name="Spec" rows="2" class="form-input" placeholder="เช่น CPU i5, RAM 8GB..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                    <textarea name="Note" rows="2" class="form-input" placeholder="-"></textarea>
+                </div>
+
+                <button type="submit" id="submitBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow mt-2 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-save mr-2"></i> บันทึกข้อมูล
+                </button>
+            </form>
+
+            <!-- Modified QR Result Section -->
+            <div id="qrResult" class="hidden mt-6 flex flex-col items-center">
+                <div class="text-center mb-2 text-sm text-gray-500">บันทึกสำเร็จ! พร้อมพิมพ์</div>
+                
+                <!-- Sticker Layout -->
+                <div id="stickerLabel" class="bg-white p-4 border-2 border-gray-800 rounded-lg text-center shadow-sm w-64 box-border">
+                    <p id="qrNameText" class="font-bold text-lg text-gray-900 mb-2 break-words leading-tight"></p>
+                    <div id="qrcode" class="flex justify-center mb-2"></div>
+                    <p id="qrCodeText" class="font-mono text-md text-gray-800 font-semibold tracking-wide bg-gray-100 rounded px-2 inline-block"></p>
+                </div>
+
+                <button onclick="printBarcode()" class="mt-4 bg-white border border-green-600 text-green-600 hover:bg-green-50 font-bold py-2 px-4 rounded shadow transition flex items-center gap-2">
+                    <i class="fas fa-print"></i> พิมพ์ QR Code
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= PAGE 2: SEARCH & UPDATE ================= -->
+        <div id="searchView" class="hidden p-6 space-y-4">
+            
+            <!-- Tools Bar -->
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs text-gray-500" id="dataStatus">สถานะ: รอโหลด...</span>
+                <button onclick="loadAllDataForSearch(true)" class="text-xs text-green-600 hover:text-green-800 underline">
+                    <i class="fas fa-sync-alt"></i> รีเฟรชข้อมูล
+                </button>
+            </div>
+
+            <!-- Search Controls with Autocomplete -->
+            <div class="flex gap-2 mb-4 relative">
+                <div class="relative flex-grow">
+                    <input type="text" id="searchInput" placeholder="พิมพ์รหัสหรือชื่อ..." class="form-input w-full" autocomplete="off">
+                    <!-- Suggestion Dropdown -->
+                    <div id="searchSuggestions" class="hidden absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b-lg shadow-xl z-50 max-h-60 overflow-y-auto suggestion-list">
+                        <!-- Items will be injected here -->
+                    </div>
+                </div>
+                <!-- Manual Search Button (Icon only on small screens) -->
+                <button onclick="manualSearch()" class="bg-gray-200 px-4 rounded-lg text-gray-600 hover:bg-gray-300"><i class="fas fa-search"></i></button>
+                <button onclick="startScanner()" class="bg-green-600 px-4 rounded-lg text-white shadow hover:bg-green-700"><i class="fas fa-camera"></i></button>
+            </div>
+
+            <!-- Scanner Area -->
+            <div id="scannerContainer" class="hidden mb-4 relative bg-black rounded-lg overflow-hidden">
+                <div id="reader" class="w-full h-64"></div>
+                <button onclick="stopScanner()" class="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full text-xs shadow">ปิดกล้อง</button>
+                <p class="text-white text-center text-xs py-2">ส่องกล้องไปที่ QR Code</p>
+            </div>
+
+            <!-- Search Result Card -->
+            <div id="searchResultCard" class="hidden bg-white border border-gray-200 rounded-xl shadow-sm p-5 relative">
+                <div class="absolute top-0 right-0 p-3">
+                    <span id="resStatus" class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">พบข้อมูล</span>
+                </div>
+                
+                <h3 id="resName" class="text-lg font-bold text-gray-800 mb-1">ชื่ออุปกรณ์</h3>
+                <p id="resCode" class="text-sm text-gray-500 font-mono mb-4">SKU: ---</p>
+
+                <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div>
+                        <span class="block text-gray-400 text-xs">หมวดหมู่</span>
+                        <span id="resCategory" class="font-medium">-</span>
+                    </div>
+                    <div>
+                        <span class="block text-gray-400 text-xs">สาขา</span>
+                        <span id="resBranch" class="font-medium">-</span>
+                    </div>
+                    <div>
+                        <span class="block text-gray-400 text-xs">เครื่องที่</span>
+                        <span id="resMachineNo" class="font-medium text-green-600 text-lg">-</span>
+                    </div>
+                    <div>
+                        <span class="block text-gray-400 text-xs">หมดประกัน</span>
+                        <span id="resWarrantyDate" class="font-medium">-</span>
+                    </div>
+                    <!-- NEW: Timestamp -->
+                    <div class="col-span-2 border-t border-dashed pt-2 mt-1">
+                        <span class="block text-gray-400 text-xs">วันเวลาที่บันทึก</span>
+                        <span id="resTimestamp" class="font-medium text-gray-600 text-xs">-</span>
+                    </div>
+                </div>
+
+                <!-- Update Note & Spec Section -->
+                <div class="border-t pt-4">
+                    <!-- NEW: Spec Edit -->
+                    <label class="block text-xs font-bold text-gray-700 mb-1">สเปค / รายละเอียด</label>
+                    <textarea id="resSpec" rows="2" class="form-input bg-yellow-50 border-yellow-200 focus:border-yellow-400 w-full mb-2" placeholder="แก้ไขสเปค..."></textarea>
+
+                    <label class="block text-xs font-bold text-gray-700 mb-1">แก้ไขหมายเหตุ / บันทึกเพิ่มเติม</label>
+                    <div class="relative">
+                        <textarea id="resNote" rows="3" class="form-input bg-yellow-50 border-yellow-200 focus:border-yellow-400 w-full" placeholder="เพิ่มหมายเหตุที่นี่..."></textarea>
+                    </div>
+                    
+                    <!-- Modified Button triggers PIN Modal -->
+                    <button onclick="openPinModal()" id="updateBtn" class="w-full mt-3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg shadow text-sm transition flex justify-center items-center gap-2">
+                        <span>บันทึกการแก้ไข (สเปค & หมายเหตุ)</span>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Not Found State -->
+            <div id="notFoundMsg" class="hidden text-center py-10 text-gray-400">
+                <i class="fas fa-box-open text-4xl mb-2"></i>
+                <p>ไม่พบข้อมูลสินค้านี้</p>
+            </div>
+            
+            <div id="loadingMsg" class="hidden text-center py-10 text-gray-500">
+                <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+                <p>กำลังค้นหา...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- PIN Confirmation Modal (NEW) -->
+    <div id="pinModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-xs text-center transform transition-all scale-100">
+            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-lock text-green-600 text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800 mb-1">ยืนยันการแก้ไข</h3>
+            <p class="text-xs text-gray-500 mb-4">กรุณาใส่รหัส PIN เพื่อบันทึก</p>
+            
+            <input type="tel" id="pinInput" class="form-input text-center text-2xl tracking-widest font-bold mb-4 border-gray-300 focus:border-green-500" placeholder="• • • • • •" maxlength="6">
+            
+            <div class="flex gap-2">
+                <button onclick="closePinModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg font-medium text-sm transition">ยกเลิก</button>
+                <button onclick="confirmPin()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium text-sm shadow transition">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Toast -->
+    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg text-sm hidden z-50 transition-opacity duration-300 pointer-events-none">
+        Message
+    </div>
+
+    <script>
+        // --- CONSTANTS ---
+        // Hardcoded API URL directly (Updated)
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr_xjXz_E6CLGKbLAMv6hI8u_LIwHTHb-NcIPZtdG-lAymJrgKYneAhq05H9Dazt-gQA/exec";
+        
+        // Static Branch Data
+        const BRANCH_LIST = [
+            "00คลังรีเทล", "01 นายายอาม", "02 เขาชะเมา", "03 แก่งหางแมว", "04 สระแก้ว", "05 เมืองใหม่นายอาม", 
+            "06 เขาไร่ยา", "07 แสนตุ้ง", "08 เขาดิน", "09 สอยดาว", "10 ตลาดเจริญสุข", 
+            "11 โป่งน้ำร้อน", "12 ทับช้าง", "13 วังสมบูรณ์", "14 ทุ่งขนาน", "15 ตราด", 
+            "16 ออฟฟิศ", "17 นายายอาม", "18 คลองหาด", "19 วังน้ำเย็น", "20 เกาะลอย", 
+            "21 เจ้าหลาว", "23 อรัญประเทศ", "24 บิ๊กซีจันทบุรี", "25 แกลง", "26 ตาพระยา", 
+            "27 โคกสูง", "28 ขลุง", "29 พลับพลา", "31 ตลาดเทศบาลตราด", "32 ตลาดพลิ้ว", 
+            "33 เขาฉกรรจ์", "99ศรีชัยโอสถ"
+        ];
+
+        // --- Variables ---
+        let html5QrcodeScanner = null;
+        let inventoryCache = []; 
+        let isScannerRunning = false; 
+
+        // LOAD DATA ON STARTUP to support Duplicate Check
+        loadAllDataForSearch();
+
+        // --- Tabs Logic ---
+        function switchTab(tab) {
+            const views = ['register', 'search'];
+            views.forEach(v => {
+                document.getElementById(v + 'View').classList.add('hidden');
+                const tabEl = document.getElementById('tab' + (v.charAt(0).toUpperCase() + v.slice(1)));
+                if(tabEl) tabEl.classList.remove('active');
+            });
+            
+            document.getElementById(tab + 'View').classList.remove('hidden');
+            const activeTab = document.getElementById('tab' + (tab.charAt(0).toUpperCase() + tab.slice(1)));
+            if(activeTab) activeTab.classList.add('active');
+
+            if(tab === 'search') {
+                if(inventoryCache.length === 0) {
+                    loadAllDataForSearch();
+                }
+            }
+            stopScanner(); 
+        }
+
+        // --- Feature 1: Register ---
+        
+        // ** DUPLICATE CHECK LOGIC **
+        const regItemCodeInput = document.getElementById('regItemCode');
+        const duplicateWarning = document.getElementById('duplicateWarning');
+        const submitBtn = document.getElementById('submitBtn');
+
+        regItemCodeInput.addEventListener('input', function(e) {
+            const val = e.target.value.trim();
+            if(!val) {
+                duplicateWarning.classList.add('hidden');
+                regItemCodeInput.classList.remove('error');
+                submitBtn.disabled = false;
+                return;
+            }
+
+            // Check if code exists in inventoryCache
+            // Ensure both are strings and handle potential null/undefined
+            const isDuplicate = inventoryCache.some(item => String(item['Item Code']).trim() === val);
+
+            if (isDuplicate) {
+                duplicateWarning.classList.remove('hidden');
+                regItemCodeInput.classList.add('error');
+                submitBtn.disabled = true; // Disable submit
+            } else {
+                duplicateWarning.classList.add('hidden');
+                regItemCodeInput.classList.remove('error');
+                submitBtn.disabled = false; // Enable submit
+            }
+        });
+
+        document.getElementById('itemForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerHTML;
+            
+            // Double Check Duplicate before submit
+            const codeVal = document.getElementById('regItemCode').value.trim();
+            if (inventoryCache.some(item => String(item['Item Code']).trim() === codeVal)) {
+                showToast("รหัสนี้มีอยู่แล้ว ไม่สามารถบันทึกได้", "red");
+                return;
+            }
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+            btn.disabled = true;
+
+            const formData = new FormData(e.target);
+            const data = new URLSearchParams();
+            for (const pair of formData) data.append(pair[0], pair[1]);
+            if(!data.has('action')) data.append('action', 'register');
+
+            const itemName = document.getElementById('regItemName').value;
+
+            try {
+                const res = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: data,
+                    redirect: 'follow' 
+                });
+                
+                if (!res.ok) throw new Error("Network response was not ok");
+                
+                const json = await res.json();
+                
+                if(json.result === 'success') {
+                    showToast("บันทึกสำเร็จ!", "green");
+                    generateQR(document.getElementById('regItemCode').value, itemName);
+                    e.target.reset();
+                    
+                    // Reload data to include new item in cache immediately
+                    loadAllDataForSearch(); 
+                    document.getElementById('dataStatus').innerText = "สถานะ: อัปเดตข้อมูลแล้ว";
+                } else {
+                    throw new Error(json.error);
+                }
+            } catch (err) {
+                console.error(err);
+                if (err.message.includes("Failed to fetch") || err.message.includes("Network")) {
+                    showToast("การเชื่อมต่อล้มเหลว (Check Network/URL)", "red");
+                } else {
+                    showToast("เกิดข้อผิดพลาด: " + err.message, "red");
+                }
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        function generateQR(code, name) {
+            const container = document.getElementById('qrcode');
+            container.innerHTML = "";
+            new QRCode(container, { text: code, width: 150, height: 150 });
+            
+            // Reordered: Name (Top) -> QR -> Code (Bottom)
+            document.getElementById('qrCodeText').innerText = code;
+            document.getElementById('qrNameText').innerText = name || ""; 
+            
+            document.getElementById('qrResult').classList.remove('hidden');
+        }
+
+        // --- Feature 2: Search & Update & Autocomplete ---
+        async function loadAllDataForSearch(manual = false) {
+            if(manual) showToast("กำลังดึงข้อมูลล่าสุด...");
+            document.getElementById('dataStatus').innerText = "สถานะ: กำลังโหลด...";
+
+            try {
+                const res = await fetch(SCRIPT_URL, { redirect: 'follow' });
+                if (!res.ok) throw new Error("Network response was not ok");
+                
+                const json = await res.json();
+                if(json.result === 'success') {
+                    inventoryCache = json.data; 
+                    document.getElementById('dataStatus').innerText = `สถานะ: พร้อมใช้งาน (${inventoryCache.length} รายการ)`;
+                    if(manual) showToast("อัปเดตข้อมูลเรียบร้อย!", "green");
+                    
+                    // No need to call updateAutocompleteLists() as Name logic is dynamic
+                }
+            } catch(e) { 
+                console.error("Load failed", e);
+                document.getElementById('dataStatus').innerText = "สถานะ: โหลดไม่สำเร็จ";
+                if (e.message.includes("Failed to fetch") || e.message.includes("Network")) {
+                    // Silent fail or minimal indication if it fails on startup
+                } else {
+                    showToast("โหลดข้อมูลไม่สำเร็จ", "red");
+                }
+            }
+        }
+
+        // --- REG NAME Autocomplete Logic ---
+        const regNameInput = document.getElementById('regItemName');
+        const regNameSuggestions = document.getElementById('regNameSuggestions');
+
+        regNameInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            if (!val) {
+                regNameSuggestions.classList.add('hidden');
+                return;
+            }
+            // Filter unique names
+            const uniqueNames = [...new Set(inventoryCache.map(i => i['Item Name']).filter(n => n && String(n).trim() !== ''))];
+            const matches = uniqueNames.filter(name => name.toLowerCase().includes(val)).slice(0, 10);
+
+            if (matches.length > 0) {
+                regNameSuggestions.innerHTML = matches.map(name => `
+                    <div onclick="selectRegName('${name}')" class="p-3 border-b hover:bg-gray-50 cursor-pointer text-sm">
+                        ${name}
+                    </div>
+                `).join('');
+                regNameSuggestions.classList.remove('hidden');
+            } else {
+                regNameSuggestions.classList.add('hidden');
+            }
+        });
+
+        function selectRegName(name) {
+            regNameInput.value = name;
+            regNameSuggestions.classList.add('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!regNameInput.contains(e.target) && !regNameSuggestions.contains(e.target)) {
+                regNameSuggestions.classList.add('hidden');
+            }
+        });
+
+        // --- BRANCH Autocomplete Logic ---
+        const regBranchInput = document.getElementById('regBranch');
+        const branchSuggestions = document.getElementById('branchSuggestions');
+
+        // Show all on click
+        regBranchInput.addEventListener('click', () => {
+            renderBranchSuggestions(regBranchInput.value);
+        });
+
+        regBranchInput.addEventListener('input', (e) => {
+            renderBranchSuggestions(e.target.value);
+        });
+
+        function renderBranchSuggestions(val) {
+            val = val.toLowerCase().trim();
+            
+            // If empty, show all. If text, filter.
+            const matches = BRANCH_LIST.filter(branch => branch.toLowerCase().includes(val));
+
+            if (matches.length > 0) {
+                branchSuggestions.innerHTML = matches.map(branch => `
+                    <div onclick="selectBranch('${branch}')" class="p-2 border-b hover:bg-gray-50 cursor-pointer text-sm">
+                        ${branch}
+                    </div>
+                `).join('');
+                branchSuggestions.classList.remove('hidden');
+            } else {
+                branchSuggestions.classList.add('hidden');
+            }
+        }
+
+        function selectBranch(branch) {
+            regBranchInput.value = branch;
+            branchSuggestions.classList.add('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!regBranchInput.contains(e.target) && !branchSuggestions.contains(e.target)) {
+                branchSuggestions.classList.add('hidden');
+            }
+        });
+
+
+        // --- Search Autocomplete Logic ---
+        const searchInput = document.getElementById('searchInput');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+
+        searchInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            if (!val) {
+                searchSuggestions.classList.add('hidden');
+                return;
+            }
+
+            const matches = inventoryCache.filter(item => {
+                const code = String(item['Item Code'] || '').toLowerCase();
+                const name = String(item['Item Name'] || '').toLowerCase();
+                return code.includes(val) || name.includes(val);
+            }).slice(0, 10); 
+
+            if (matches.length > 0) {
+                searchSuggestions.innerHTML = matches.map(item => `
+                    <div onclick="selectSuggestion('${item['Item Code']}')" class="p-3 border-b hover:bg-gray-50 cursor-pointer transition flex justify-between items-center group">
+                        <div>
+                            <div class="font-bold text-gray-800 text-sm group-hover:text-green-600">${item['Item Name'] || 'ไม่มีชื่อ'}</div>
+                            <div class="text-xs text-gray-500">${item['Item Code']}</div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                    </div>
+                `).join('');
+                searchSuggestions.classList.remove('hidden');
+            } else {
+                searchSuggestions.classList.add('hidden');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
+                searchSuggestions.classList.add('hidden');
+            }
+        });
+
+        function selectSuggestion(code) {
+            searchInput.value = code;
+            searchSuggestions.classList.add('hidden');
+            findItem(code);
+        }
+
+        function manualSearch() {
+            const code = searchInput.value.trim();
+            if(code) findItem(code);
+        }
+
+        function findItem(code) {
+            document.getElementById('searchResultCard').classList.add('hidden');
+            document.getElementById('notFoundMsg').classList.add('hidden');
+            document.getElementById('loadingMsg').classList.remove('hidden');
+            searchSuggestions.classList.add('hidden'); 
+
+            setTimeout(() => {
+                if (inventoryCache.length === 0) {
+                     loadAllDataForSearch().then(() => performFind(code));
+                } else {
+                    performFind(code);
+                }
+            }, 300); 
+        }
+
+        function performFind(code) {
+            document.getElementById('loadingMsg').classList.add('hidden');
+            if(!code) return;
+
+            const searchKey = String(code).trim().toLowerCase();
+
+            const item = inventoryCache.find(row => {
+                const rowCode = String(row['Item Code'] || '').trim().toLowerCase();
+                return rowCode === searchKey;
+            });
+
+            if (item) {
+                document.getElementById('resName').innerText = item['Item Name'] || '-';
+                document.getElementById('resCode').innerText = "SKU: " + (item['Item Code'] || code);
+                document.getElementById('resCategory').innerText = item['Category'] || '-';
+                document.getElementById('resBranch').innerText = item['Branch'] || item['Location'] || '-';
+                document.getElementById('resMachineNo').innerText = item['MachineNo'] || item['Quantity'] || '-';
+                
+                let warrantyDate = item['WarrantyDate'] || item['Price'] || '-';
+                if(warrantyDate !== '-' && !isNaN(Date.parse(warrantyDate))) {
+                    warrantyDate = new Date(warrantyDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                }
+                document.getElementById('resWarrantyDate').innerText = warrantyDate;
+
+                // Load Spec and Note
+                document.getElementById('resSpec').value = item['Spec'] || ''; 
+                document.getElementById('resNote').value = item['Note'] || ''; 
+                
+                // NEW: Timestamp
+                let timestamp = item['Timestamp'] || '-';
+                if(timestamp !== '-' && !isNaN(Date.parse(timestamp))) {
+                    timestamp = new Date(timestamp).toLocaleString('th-TH', { 
+                        year: 'numeric', month: 'long', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                }
+                document.getElementById('resTimestamp').innerText = timestamp;
+                
+                document.getElementById('resCode').dataset.code = item['Item Code']; 
+
+                document.getElementById('searchResultCard').classList.remove('hidden');
+            } else {
+                document.getElementById('notFoundMsg').classList.remove('hidden');
+            }
+        }
+
+        // --- NEW: PIN & Update Logic ---
+        
+        function openPinModal() {
+            document.getElementById('pinInput').value = '';
+            document.getElementById('pinModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('pinInput').focus(), 100);
+        }
+
+        function closePinModal() {
+            document.getElementById('pinModal').classList.add('hidden');
+        }
+
+        function confirmPin() {
+            const pin = document.getElementById('pinInput').value;
+            if (pin === "224339") {
+                closePinModal();
+                performUpdate(); // Proceed to save
+            } else {
+                showToast("รหัส PIN ไม่ถูกต้อง", "red");
+                document.getElementById('pinInput').value = '';
+                document.getElementById('pinInput').focus();
+            }
+        }
+
+        // Trigger PIN check on Enter key
+        document.getElementById('pinInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') confirmPin();
+        });
+
+        async function performUpdate() {
+            const code = document.getElementById('resCode').dataset.code;
+            const newNote = document.getElementById('resNote').value;
+            const newSpec = document.getElementById('resSpec').value;
+            const btn = document.getElementById('updateBtn');
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังอัปเดต...';
+            btn.disabled = true;
+
+            const data = new URLSearchParams();
+            data.append('action', 'update'); 
+            data.append('code', code);
+            data.append('note', newNote);
+            data.append('spec', newSpec);
+
+            try {
+                const res = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: data,
+                    redirect: 'follow'
+                });
+                if (!res.ok) throw new Error("Network response was not ok");
+
+                const json = await res.json();
+
+                if(json.result === 'success') {
+                    showToast("อัปเดตเรียบร้อย!", "green");
+                    const searchKey = String(code).trim().toLowerCase();
+                    const cachedItem = inventoryCache.find(i => String(i['Item Code'] || '').trim().toLowerCase() === searchKey);
+                    if(cachedItem) {
+                        cachedItem['Note'] = newNote;
+                        cachedItem['Spec'] = newSpec;
+                    }
+                } else {
+                    throw new Error(json.error || "Update failed");
+                }
+            } catch(err) {
+                if (err.message.includes("Failed to fetch") || err.message.includes("Network")) {
+                    showToast("การเชื่อมต่อล้มเหลว (Check URL/Network)", "red");
+                } else {
+                    showToast("อัปเดตไม่สำเร็จ: " + err.message, "red");
+                }
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // --- Scanner Logic ---
+        function startScanner() {
+            const container = document.getElementById('scannerContainer');
+            container.classList.remove('hidden');
+            searchSuggestions.classList.add('hidden'); // Hide suggestions if open
+            
+            if(html5QrcodeScanner) {
+                try { html5QrcodeScanner.clear(); } catch(e){}
+            }
+
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: 250 }, 
+                (decodedText) => {
+                    stopScanner();
+                    document.getElementById('searchInput').value = decodedText;
+                    findItem(decodedText);
+                    showToast("สแกนสำเร็จ: " + decodedText, "green");
+                },
+                (errorMessage) => { }
+            ).then(() => {
+                isScannerRunning = true; 
+            }).catch(err => {
+                console.log("Start failed", err);
+                container.classList.add('hidden');
+                isScannerRunning = false;
+                showToast("ไม่สามารถเปิดกล้องได้", "red");
+            });
+        }
+
+        function stopScanner() {
+            const container = document.getElementById('scannerContainer');
+            
+            if (html5QrcodeScanner && isScannerRunning) {
+                html5QrcodeScanner.stop().then(() => {
+                    html5QrcodeScanner.clear();
+                    container.classList.add('hidden');
+                    isScannerRunning = false;
+                }).catch(err => {
+                    container.classList.add('hidden');
+                    isScannerRunning = false;
+                    try { html5QrcodeScanner.clear(); } catch(e){}
+                });
+            } else {
+                container.classList.add('hidden');
+                if(html5QrcodeScanner) {
+                    try { html5QrcodeScanner.clear(); } catch(e){}
+                }
+            }
+        }
+
+        // --- Utilities ---
+        function showToast(msg, color="gray") {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.className = `fixed bottom-5 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-lg text-sm z-50 transition-opacity duration-300 text-white ${color === 'green' ? 'bg-green-600' : (color === 'red' ? 'bg-red-600' : 'bg-gray-800')}`;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+        function printBarcode() {
+            const win = window.open('','','height=500,width=500');
+            // Modified to print specific styling
+            const content = document.getElementById('stickerLabel').outerHTML;
+            win.document.write(`
+                <html>
+                <head><title>Print Label</title></head>
+                <body style="text-align:center; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh;">
+                    ${content}
+                </body>
+                </html>
+            `);
+            win.document.close();
+            win.print();
+        }
+    </script>
+</body>
+</html>
