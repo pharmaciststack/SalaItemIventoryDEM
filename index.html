@@ -278,7 +278,7 @@
 
     <script>
         // --- CONSTANTS ---
-        // Hardcoded API URL directly (Updated)
+        // API URL **********************************************สำหรับแก้ API APP Script***********************************************************
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr_xjXz_E6CLGKbLAMv6hI8u_LIwHTHb-NcIPZtdG-lAymJrgKYneAhq05H9Dazt-gQA/exec";
         
         // Static Branch Data
@@ -519,7 +519,7 @@
         function renderBranchSuggestions(val) {
             val = val.toLowerCase().trim();
             
-            // If empty, show all. If text, filter.
+            // If empty, show all. If text, filter. 
             const matches = BRANCH_LIST.filter(branch => branch.toLowerCase().includes(val));
 
             if (matches.length > 0) {
@@ -665,7 +665,7 @@
             }
         }
 
-        // --- NEW: PIN & Update Logic ---
+        // --- NEW: PIN & Update Logic --- ระบบ PIN 
         
         function openPinModal(callback) {
             onPinSuccess = callback; // Set the success callback
@@ -681,7 +681,8 @@
 
         function confirmPin() {
             const pin = document.getElementById('pinInput').value;
-            if (pin === "224339") {
+            if (pin === "224339") //***********************สำหรับการตั้งรหัสใหม่************************* 
+            {
                 const callback = onPinSuccess;
                 closePinModal();
                 if (callback) callback(); // Execute the pending action
