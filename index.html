@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory System Pro</title>
+    <title>Inventory System Pro Ver 1.0.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -35,15 +35,15 @@
         <div class="bg-green-600 p-5 flex justify-between items-center">
             <div>
                 <h1 class="text-white text-xl font-bold">ระบบลงทะเบียนอุปกรณ์-Salaosot</h1>
-                <p class="text-green-100 text-xs">QR Code Inventory System ver0.1.3</p>
+                <p class="text-green-100 text-xs">QR Code Inventory System (Ver 1.0.1)</p>
             </div>
-            <!-- Removed Settings Button -->
+            <!-- Status Indicator -->
             <div class="text-white opacity-80 text-xs">
                 <i class="fas fa-check-circle"></i> พร้อมใช้งาน
             </div>
         </div>
 
-        <!-- Removed Settings Panel -->
+        <!-- Removed Settings Panel (Hardcoded URL) -->
 
         <!-- Tabs Navigation -->
         <div class="flex border-b border-gray-200">
@@ -54,7 +54,7 @@
         <!-- ================= PAGE 1: REGISTER ================= -->
         <div id="registerView" class="p-6 space-y-4">
             
-            <!-- Moved Text to Top & Increased Font Size -->
+            <!-- Instruction Text -->
             <p class="text-base text-gray-700 font-medium text-center bg-gray-50 p-2 rounded border border-gray-200">
                 วิธีการตั้งรหัส: หมวดหมู่-รหัสสาขา-วันที่ลงทะเบียน-เครื่องที่ <br>
                 ตัวอย่าง: <span class="font-bold text-indigo-600">PC102026012101</span>
@@ -64,8 +64,13 @@
                 <input type="hidden" name="action" value="register">
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">รหัสอุปกรณ์ / Barcode </label>
-                    <input type="text" name="Item Code" id="regItemCode" required class="form-input" placeholder="พิมพ์รหัสสินค้า...">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">รหัสอุปกรณ์ / Barcode / SKU</label>
+                    <div class="flex gap-2">
+                        <input type="text" name="Item Code" id="regItemCode" required class="form-input" placeholder="พิมพ์รหัสสินค้า...">
+                        <button type="button" onclick="generateAutoCode()" class="bg-indigo-50 text-indigo-700 px-4 rounded-lg hover:bg-indigo-100 transition text-sm font-bold whitespace-nowrap border border-indigo-200 shadow-sm flex items-center gap-1">
+                            <i class="fas fa-magic"></i> Generate
+                        </button>
+                    </div>
                     <!-- Duplicate Warning Message -->
                     <p id="duplicateWarning" class="hidden text-xs text-red-500 mt-1 font-bold">
                         <i class="fas fa-exclamation-circle"></i> รหัสนี้มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น
@@ -96,7 +101,7 @@
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
-                    <div><label class="text-xs text-gray-500">เครื่องที่</label><input type="text" name="MachineNo" class="form-input" placeholder="เช่น 1"></div>
+                    <div><label class="text-xs text-gray-500">เครื่องที่</label><input type="text" name="MachineNo" id="regMachineNo" class="form-input" placeholder="เช่น 1"></div>
                     <div><label class="text-xs text-gray-500">หมดประกัน</label><input type="date" name="WarrantyDate" class="form-input text-sm"></div>
                     <!-- Branch Autocomplete -->
                     <div>
@@ -110,14 +115,14 @@
                     </div>
                 </div>
 
-                <!-- NEW: Spec Field -->
+                <!-- Spec Field -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">สเปค / รายละเอียด(*ไม่ต้องใส่)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">สเปค / รายละเอียด(**ไม่ต้องใส่)</label>
                     <textarea name="Spec" id="regSpec" rows="2" class="form-input" placeholder="เช่น CPU i5, RAM 8GB..."></textarea>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ(*ไม่ต้องใส่)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
                     <textarea name="Note" id="regNote" rows="2" class="form-input" placeholder="-"></textarea>
                 </div>
 
@@ -126,9 +131,9 @@
                 </button>
             </form>
 
-            <!-- Modified QR Result Section -->
+            <!-- QR Result Section -->
             <div id="qrResult" class="hidden mt-6 flex flex-col items-center">
-                <div class="text-center mb-2 text-sm text-gray-500">บันทึกสำเร็จ พร้อมพิมพ์</div>
+                <div class="text-center mb-2 text-sm text-gray-500">บันทึกสำเร็จ! พร้อมพิมพ์</div>
                 
                 <!-- Sticker Layout -->
                 <div id="stickerLabel" class="bg-white p-4 border-2 border-gray-800 rounded-lg text-center shadow-sm w-64 box-border">
@@ -163,7 +168,7 @@
                         <!-- Items will be injected here -->
                     </div>
                 </div>
-                <!-- Manual Search Button (Icon only on small screens) -->
+                <!-- Manual Search Button -->
                 <button onclick="manualSearch()" class="bg-gray-200 px-4 rounded-lg text-gray-600 hover:bg-gray-300"><i class="fas fa-search"></i></button>
                 <button onclick="startScanner()" class="bg-green-600 px-4 rounded-lg text-white shadow hover:bg-green-700"><i class="fas fa-camera"></i></button>
             </div>
@@ -172,7 +177,7 @@
             <div id="scannerContainer" class="hidden mb-4 relative bg-black rounded-lg overflow-hidden">
                 <div id="reader" class="w-full h-64"></div>
                 <button onclick="stopScanner()" class="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full text-xs shadow">ปิดกล้อง</button>
-                <p class="text-white text-center text-xs py-2">QR Code Reader</p>
+                <p class="text-white text-center text-xs py-2">ส่องกล้องไปที่ QR Code</p>
             </div>
 
             <!-- Search Result Card -->
@@ -182,7 +187,7 @@
                 </div>
                 
                 <h3 id="resName" class="text-lg font-bold text-gray-800 mb-1">ชื่ออุปกรณ์</h3>
-                <p id="resCode" class="text-sm text-gray-500 font-mono mb-4">Code: ---</p>
+                <p id="resCode" class="text-sm text-gray-500 font-mono mb-4">SKU: ---</p>
 
                 <div class="grid grid-cols-2 gap-4 text-sm mb-4">
                     <div>
@@ -201,14 +206,14 @@
                         <span class="block text-gray-400 text-xs">หมดประกัน</span>
                         <span id="resWarrantyDate" class="font-medium">-</span>
                     </div>
-                    <!-- NEW: Timestamp -->
+                    <!-- Timestamp -->
                     <div class="col-span-2 border-t border-dashed pt-2 mt-1">
                         <span class="block text-gray-400 text-xs">วันเวลาที่บันทึก</span>
                         <span id="resTimestamp" class="font-medium text-gray-600 text-xs">-</span>
                     </div>
                 </div>
 
-                <!-- ADDED: QR Code Section for Search Result -->
+                <!-- QR Code Section for Search Result -->
                 <div class="flex flex-col items-center mt-4 mb-4 pt-4 border-t border-gray-100 bg-gray-50 p-4 rounded-lg">
                     <div id="stickerLabelSearch" class="bg-white p-4 border-2 border-gray-800 rounded-lg text-center shadow-sm w-64 box-border">
                         <p id="resQrName" class="font-bold text-lg text-gray-900 mb-2 break-words leading-tight"></p>
@@ -222,7 +227,6 @@
 
                 <!-- Update Note & Spec Section -->
                 <div class="border-t pt-4">
-                    <!-- NEW: Spec Edit -->
                     <label class="block text-xs font-bold text-gray-700 mb-1">สเปค / รายละเอียด</label>
                     <textarea id="resSpec" rows="2" class="form-input bg-yellow-50 border-yellow-200 focus:border-yellow-400 w-full mb-2" placeholder="แก้ไขสเปค..."></textarea>
 
@@ -253,7 +257,7 @@
 
     </div>
 
-    <!-- PIN Confirmation Modal (NEW) -->
+    <!-- PIN Confirmation Modal -->
     <div id="pinModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-xs text-center transform transition-all scale-100">
             <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -278,7 +282,6 @@
 
     <script>
         // --- CONSTANTS ---
-        // API URL **********************************************สำหรับแก้ API APP Script***********************************************************
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr_xjXz_E6CLGKbLAMv6hI8u_LIwHTHb-NcIPZtdG-lAymJrgKYneAhq05H9Dazt-gQA/exec";
         
         // Static Branch Data
@@ -288,7 +291,7 @@
             "11 โป่งน้ำร้อน", "12 ทับช้าง", "13 วังสมบูรณ์", "14 ทุ่งขนาน", "15 ตราด", 
             "16 ออฟฟิศ", "17 นายายอาม", "18 คลองหาด", "19 วังน้ำเย็น", "20 เกาะลอย", 
             "21 เจ้าหลาว", "23 อรัญประเทศ", "24 บิ๊กซีจันทบุรี", "25 แกลง", "26 ตาพระยา", 
-            "27 โคกสูง", "28 ขลุง", "29 พลับพลา", "30 วังน้ำเย็น 2 ","31 ตลาดเทศบาลตราด", "32 ตลาดพลิ้ว", 
+            "27 โคกสูง", "28 ขลุง", "29 พลับพลา", "30 วังน้ำเย็น2 ", "31 ตลาดเทศบาลตราด", "32 ตลาดพลิ้ว", 
             "33 เขาฉกรรจ์", "99ศรีชัยโอสถ"
         ];
 
@@ -299,7 +302,7 @@
         // Global callback for PIN success
         let onPinSuccess = null;
 
-        // LOAD DATA ON STARTUP to support Duplicate Check
+        // LOAD DATA ON STARTUP
         loadAllDataForSearch();
 
         // --- Tabs Logic ---
@@ -325,6 +328,53 @@
 
         // --- Feature 1: Register ---
         
+        // ** AUTO GENERATE CODE LOGIC **
+        function generateAutoCode() {
+            // 1. หมวดหมู่ (ดึงตัวอักษรด้านหน้าสุด เช่น "PC" จาก "PC-คอมพิวเตอร์")
+            const catSelect = document.querySelector('select[name="Category"]');
+            const catText = catSelect.options[catSelect.selectedIndex].text; 
+            const prefix = catText.split('-')[0];
+
+            // 2. รหัสสาขา (ดึงเลข 2 หลักแรก)
+            const branchText = document.getElementById('regBranch').value.trim();
+            if (!branchText) {
+                showToast("กรุณาเลือกสาขาก่อนสร้างรหัสอัตโนมัติ", "red");
+                document.getElementById('regBranch').focus();
+                return;
+            }
+            let branchCode = branchText.substring(0, 2);
+            if (!/^\d{2}$/.test(branchCode)) {
+                branchCode = "00"; // กรณีไม่ได้ใช้สาขาตามฟอร์แมต ให้ใช้ 00 แทน
+            }
+
+            // 3. วันที่ลงทะเบียน (YYYYMMDD)
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}${mm}${dd}`;
+
+            // 4. เครื่องที่ (เติม 0 ให้ครบ 2 หลัก)
+            const machineInput = document.getElementById('regMachineNo');
+            let machineNoStr = machineInput.value.trim();
+            if (!machineNoStr) {
+                 machineNoStr = "1"; // ค่าเริ่มต้นถ้าไม่ได้กรอก
+                 machineInput.value = "1";
+            }
+            const paddedMachineNo = machineNoStr.padStart(2, '0');
+
+            // 5. รวมรหัส
+            const autoCode = `${prefix}${branchCode}${dateStr}${paddedMachineNo}`;
+            
+            // นำไปใส่ในช่องรหัส
+            const codeInput = document.getElementById('regItemCode');
+            codeInput.value = autoCode;
+            
+            // สั่งให้ input event ทำงานเพื่อเช็คว่ามีรหัสซ้ำในระบบหรือไม่
+            codeInput.dispatchEvent(new Event('input'));
+            showToast("สร้างรหัสอัตโนมัติสำเร็จ", "green");
+        }
+
         // ** DUPLICATE CHECK LOGIC **
         const regItemCodeInput = document.getElementById('regItemCode');
         const duplicateWarning = document.getElementById('duplicateWarning');
@@ -452,14 +502,12 @@
                     inventoryCache = json.data; 
                     document.getElementById('dataStatus').innerText = `สถานะ: พร้อมใช้งาน (${inventoryCache.length} รายการ)`;
                     if(manual) showToast("อัปเดตข้อมูลเรียบร้อย!", "green");
-                    
-                    // No need to call updateAutocompleteLists() as Name logic is dynamic
                 }
             } catch(e) { 
                 console.error("Load failed", e);
                 document.getElementById('dataStatus').innerText = "สถานะ: โหลดไม่สำเร็จ";
                 if (e.message.includes("Failed to fetch") || e.message.includes("Network")) {
-                    // Silent fail or minimal indication if it fails on startup
+                    // Silent fail
                 } else {
                     showToast("โหลดข้อมูลไม่สำเร็จ", "red");
                 }
@@ -519,7 +567,7 @@
         function renderBranchSuggestions(val) {
             val = val.toLowerCase().trim();
             
-            // If empty, show all. If text, filter. 
+            // If empty, show all. If text, filter.
             const matches = BRANCH_LIST.filter(branch => branch.toLowerCase().includes(val));
 
             if (matches.length > 0) {
@@ -665,7 +713,7 @@
             }
         }
 
-        // --- NEW: PIN & Update Logic --- ระบบ PIN 
+        // --- NEW: PIN & Update Logic ---
         
         function openPinModal(callback) {
             onPinSuccess = callback; // Set the success callback
@@ -681,8 +729,7 @@
 
         function confirmPin() {
             const pin = document.getElementById('pinInput').value;
-            if (pin === "224339") //***********************สำหรับการตั้งรหัสใหม่************************* 
-            {
+            if (pin === "224339") {
                 const callback = onPinSuccess;
                 closePinModal();
                 if (callback) callback(); // Execute the pending action
