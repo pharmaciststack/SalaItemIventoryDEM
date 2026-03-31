@@ -69,14 +69,14 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">รหัสอุปกรณ์</label>
                     <div class="flex gap-2">
-                        <input type="text" name="Item Code" id="regItemCode" required class="form-input" placeholder="พิมพ์รหัสสินค้า...">
+                        <input type="text" name="Item Code" id="regItemCode" required class="form-input" placeholder=" กดปุ่มสร้างรหัสก่อนบันทกข้อมูล! ">
                         <button type="button" onclick="generateAutoCode()" class="bg-indigo-50 text-indigo-700 px-4 rounded-lg hover:bg-indigo-100 transition text-sm font-bold whitespace-nowrap border border-indigo-200 shadow-sm flex items-center gap-1">
                             <i class="fas fa-magic"></i> สร้างรหัส
                         </button>
                     </div>
                     <!-- Duplicate Warning Message -->
                     <p id="duplicateWarning" class="hidden text-xs text-red-500 mt-1 font-bold">
-                        <i class="fas fa-exclamation-circle"></i> รหัสนี้มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น
+                        <i class="fas fa-exclamation-circle"></i> รหัสนี้มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น(หรือเพิ่มลำดับของเครื่อง)
                     </p>
                 </div>
 
@@ -105,7 +105,7 @@
 
                 <div class="grid grid-cols-3 gap-2">
                     <div><label class="text-xs text-gray-500">เครื่องที่</label><input type="text" name="MachineNo" id="regMachineNo" class="form-input" placeholder="เช่น 1"></div>
-                    <div><label class="text-xs text-gray-500">หมดประกัน</label><input type="date" name="WarrantyDate" class="form-input text-sm"></div>
+                    <div><label class="text-xs text-gray-500">วันที่หมดประกัน</label><input type="date" name="WarrantyDate" class="form-input text-sm"></div>
                     <!-- Branch Autocomplete -->
                     <div>
                         <label class="text-xs text-gray-500">สาขา</label>
