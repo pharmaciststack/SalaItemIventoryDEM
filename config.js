@@ -1,14 +1,14 @@
 // =====================================================
 // ตั้งค่าระบบ — แก้ไขไฟล์นี้ไฟล์เดียวตอน Deploy
 // =====================================================
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.2.0';
 
 // 1. Client ID เดียวกับระบบแจ้งซ่อม (ต้องเพิ่ม origin ของเว็บนี้ใน Google Cloud Console ด้วย)
 const GOOGLE_CLIENT_ID = '854838901494-cuhmkrl29oj80i12apt7no01k763r3o2.apps.googleusercontent.com';
 
 // 2. URL ของ Apps Script Web App (Deploy > New deployment) — ใช้ apps-script/Code.gs ในโปรเจกต์นี้
 //    ถ้ายังไม่ได้ใส่ และเปิดบน localhost ระบบจะเข้าโหมดทดสอบ (Mock) อัตโนมัติ
-const APPS_SCRIPT_URL = 'PASTE_NEW_DEPLOYMENT_URL_HERE';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr_xjXz_E6CLGKbLAMv6hI8u_LIwHTHb-NcIPZtdG-lAymJrgKYneAhq05H9Dazt-gQA/exec';
 
 // 2b. URL ของ Apps Script ตัวเดิม (ระบบ v1.2.1) — ใช้ชั่วคราวเพื่ออ่าน/บันทึกข้อมูลจริง
 //     โหมดนี้ทำได้: ดู ค้นหา ลงทะเบียน แก้สเปค/หมายเหตุ พิมพ์ QR (ไม่มีเข้าสู่ระบบ/เช็คสต็อก/จำหน่าย)

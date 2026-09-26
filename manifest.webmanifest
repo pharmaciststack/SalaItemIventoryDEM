@@ -1,0 +1,21 @@
+{
+  "name": "ระบบลงทะเบียนอุปกรณ์ ศาลาโอสถ",
+  "short_name": "Sala-Inventory",
+  "description": "ลงทะเบียน ตรวจนับ และจำหน่ายอุปกรณ์ของสาขา — บริษัท ศาลาโอสถรีเทล จำกัด",
+  "lang": "th",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f9fafb",
+  "theme_color": "#16a34a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "เช็คสต็อกสาขา", "url": "./?tab=console", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "ลงทะเบียนอุปกรณ์", "url": "./?tab=register", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}
