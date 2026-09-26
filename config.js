@@ -10,6 +10,11 @@ const GOOGLE_CLIENT_ID = '854838901494-cuhmkrl29oj80i12apt7no01k763r3o2.apps.goo
 //    ถ้ายังไม่ได้ใส่ และเปิดบน localhost ระบบจะเข้าโหมดทดสอบ (Mock) อัตโนมัติ
 const APPS_SCRIPT_URL = 'PASTE_NEW_DEPLOYMENT_URL_HERE';
 
+// 2b. URL ของ Apps Script ตัวเดิม (ระบบ v1.2.1) — ใช้ชั่วคราวเพื่ออ่าน/บันทึกข้อมูลจริง
+//     โหมดนี้ทำได้: ดู ค้นหา ลงทะเบียน แก้สเปค/หมายเหตุ พิมพ์ QR (ไม่มีเข้าสู่ระบบ/เช็คสต็อก/จำหน่าย)
+//     เมื่อ deploy Code.gs ตัวใหม่แล้ว ให้ใส่ URL ใหม่ใน APPS_SCRIPT_URL ด้านบน ระบบจะเลิกใช้ตัวนี้เอง
+const LEGACY_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr_xjXz_E6CLGKbLAMv6hI8u_LIwHTHb-NcIPZtdG-lAymJrgKYneAhq05H9Dazt-gQA/exec';
+
 // 3. ลิงก์คู่มือการใช้งาน
 const GUIDE_URL = 'https://drive.google.com/file/d/14wi-0MlLPe8Af2ZnQWGUsQDYxhRAz4IO/view?usp=sharing';
 

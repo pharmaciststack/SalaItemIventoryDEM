@@ -6,7 +6,12 @@
 // ==================== Constants ====================
 const IS_LOCAL = ['localhost', '127.0.0.1', ''].includes(location.hostname);
 const DEMO = !!window.DEMO_MODE;   // หน้า demo.html — ข้อมูลสมมติ ไม่ต้องเข้าสู่ระบบ
-const MOCK = DEMO || (IS_LOCAL && (new URLSearchParams(location.search).has('mock') || !/^https:\/\//.test(APPS_SCRIPT_URL)));
+// LEGACY = ต่อกับ Apps Script ตัวเดิม (ข้อมูลจริง แต่ยังไม่มีเข้าสู่ระบบ/เช็คสต็อก/จำหน่าย)
+const LEGACY = !DEMO && !/^https:\/\//.test(APPS_SCRIPT_URL) &&
+  typeof LEGACY_SCRIPT_URL === 'string' && /^https:\/\//.test(LEGACY_SCRIPT_URL) &&
+  !new URLSearchParams(location.search).has('mock');
+const MOCK = DEMO || (!LEGACY && IS_LOCAL && (new URLSearchParams(location.search).has('mock') || !/^https:\/\//.test(APPS_SCRIPT_URL)));
+const LITE = DEMO || LEGACY;   // ซ่อนเมนู/ปุ่มที่ระบบหลังบ้านยังไม่รองรับ
 const SESSION_KEY = MOCK ? 'inv_session_mock' : 'inv_session';
 
 const CATS = [
@@ -223,7 +228,9 @@ async function api(action, payload = {}) {
   const body = { action, session: S.session, ...payload };
   let res;
   try {
-    if (MOCK) {
+    if (LEGACY) {
+      res = await legacyCall(body);
+    } else if (MOCK) {
       res = await MockAPI.call(body);
     } else {
       const r = await fetch(APPS_SCRIPT_URL, {
@@ -243,6 +250,110 @@ async function api(action, payload = {}) {
   return res;
 }
 const errMsg = res => res.message || ({ forbidden: 'ไม่มีสิทธิ์ทำรายการนี้', network: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }[res.error]) || res.error || 'เกิดข้อผิดพลาด';
+
+// ==================== Legacy backend adapter ====================
+// แปลงคำสั่งของหน้าเว็บใหม่ ↔ Apps Script ตัวเดิม (ระบบ v1.2.1) เพื่อใช้ข้อมูลจริงก่อน
+// ตัวเดิมรองรับแค่: อ่านทั้งหมด (getData) · ลงทะเบียน (register) · แก้สเปค/หมายเหตุ (update)
+const LEGACY_USER = { email: '', name: '', picture: '', registered: true, status: 'approved', branch: '', role: 'admin', isSuper: false };
+
+// วันที่จากชีตมาเป็น ISO (UTC) — แปลงกลับเป็นเวลาไทยก่อนแสดง
+function legacyDate(v, withTime) {
+  if (!v) return '';
+  const s = String(v);
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.trim();
+  const d = new Date(new Date(s).getTime() + 7 * 3600e3);   // Asia/Bangkok
+  const ymd = `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+  return withTime ? `${ymd} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` : ymd;
+}
+
+function legacyToItem(r, i) {
+  return {
+    row: i + 2,
+    code: String(r['Item Code'] || '').trim(),
+    name: String(r['Item Name'] || '').trim(),
+    category: String(r['Category'] || '').trim(),
+    machineNo: String(r['MachineNo'] ?? '').trim(),
+    warranty: legacyDate(r['WarrantyDate']),
+    branch: String(r['Branch'] || '').trim(),
+    spec: String(r['Spec'] || '').trim(),
+    note: String(r['Note'] || '').trim(),
+    status: 'ใช้งาน',
+    createdAt: legacyDate(r['Timestamp'], true),
+    createdBy: '', updatedAt: '', updatedBy: '',
+    lastCheckAt: '', lastCheckBy: '', lastCheckResult: '', disposalId: '',
+  };
+}
+
+// Apps Script ตัวเดิมบางครั้งตอบเป็นหน้า HTML ชั่วคราว — ลองซ้ำอีกครั้ง
+async function legacyJson(url, opts, tries = 3) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, { redirect: 'follow', cache: 'no-store', signal: AbortSignal.timeout(30000), ...opts });
+      const text = await r.text();
+      try { return JSON.parse(text); }
+      catch (e) { lastErr = new Error('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง'); }
+    } catch (e) { lastErr = e; }
+    await new Promise(r => setTimeout(r, 800 * (i + 1)));
+  }
+  throw lastErr;
+}
+
+async function legacyPost(params) {
+  const j = await legacyJson(LEGACY_SCRIPT_URL, { method: 'POST', body: new URLSearchParams(params) });
+  if (j.result !== 'success') throw new Error(j.error || 'บันทึกไม่สำเร็จ');
+  return j;
+}
+
+async function legacyCall(body) {
+  try { return await legacyRoute(body); }
+  catch (e) { return { ok: false, error: 'network', message: e.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }; }
+}
+
+async function legacyRoute(body) {
+  switch (body.action) {
+    case 'login':
+    case 'me':
+      return { ok: true, session: 'legacy', expiresAt: Date.now() + 864e5, user: LEGACY_USER };
+
+    case 'logout':
+      return { ok: true };
+
+    case 'list': {
+      const j = await legacyJson(LEGACY_SCRIPT_URL + '?action=getData&t=' + Date.now());
+      const rows = Array.isArray(j) ? j : (j.data || []);
+      return { ok: true, items: rows.map(legacyToItem).filter(it => it.code), scope: null, serverTime: Date.now() };
+    }
+
+    case 'create': {
+      const it = body.item || {};
+      await legacyPost({
+        action: 'register', 'Item Code': it.code, 'Item Name': it.name, Category: it.category,
+        MachineNo: it.machineNo || '', WarrantyDate: it.warranty || '', Branch: it.branch,
+        Spec: it.spec || '', Note: it.note || '',
+      });
+      const d = new Date();
+      return { ok: true, item: { ...legacyToItem({}, S.items.length), ...it,
+        status: 'ใช้งาน', createdAt: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}` } };
+    }
+
+    case 'update': {
+      const f = body.fields || {};
+      const bad = Object.keys(f).find(k => k !== 'spec' && k !== 'note');
+      if (bad) return { ok: false, error: 'forbidden', message: 'ระบบเดิมแก้ไขได้เฉพาะสเปคและหมายเหตุ' };
+      const cur = S.items.find(x => x.code === body.code) || {};
+      const spec = 'spec' in f ? f.spec : (cur.spec || '');
+      const note = 'note' in f ? f.note : (cur.note || '');
+      await legacyPost({ action: 'update', 'Item Code': body.code, Spec: spec, Note: note, pin: '000000' });
+      const changed = Object.keys(f).filter(k => String(f[k] ?? '') !== String(cur[k] ?? ''));
+      return { ok: true, changed, item: { ...cur, spec, note } };
+    }
+
+    case 'history':   return { ok: true, history: [] };
+    case 'disposals': return { ok: true, reports: [] };
+  }
+  return { ok: false, error: 'unsupported', message: 'ระบบหลังบ้านเดิมยังไม่รองรับคำสั่งนี้' };
+}
 
 // ==================== Session & Auth ====================
 function saveSession(token, exp) {
@@ -388,6 +499,12 @@ function enterApp(items) {
   $('mock-banner').classList.toggle('hidden', !MOCK);
   if (DEMO) $('mock-banner').innerHTML = 'ตัวอย่างระบบ (Demo) — ข้อมูลสมมติทั้งหมด ไม่ใช่ข้อมูลจริงของบริษัท ' +
     '<button onclick="mockReset()" class="underline underline-offset-2 ml-1 font-semibold">เริ่มใหม่</button>';
+  if (LEGACY) {
+    const b = $('mock-banner');
+    b.className = 'bg-amber-100 text-amber-900 text-xs px-4 py-1.5 text-center';
+    b.innerHTML = 'เชื่อมต่อข้อมูลจริงแล้ว · เมนูเช็คสต็อกสาขา / รายงานจำหน่าย / เข้าสู่ระบบ จะเปิดใช้เมื่อติดตั้งระบบหลังบ้านตัวใหม่';
+    b.classList.remove('hidden');
+  }
   applyRoleUI();
   renderNav();
   if (!S.tab) switchTab(new URLSearchParams(location.search).get('tab') || visibleTabs()[0].id);
@@ -400,8 +517,8 @@ function enterApp(items) {
 
 function renderUserHeader() {
   // โหมด demo ไม่มีการเข้าสู่ระบบ จึงไม่แสดงชื่อผู้ใช้/ปุ่มออกจากระบบ
-  $('user-chip').classList.toggle('hidden', DEMO);
-  if (DEMO) return;
+  $('user-chip').classList.toggle('hidden', LITE);
+  if (LITE) return;
   const u = S.user;
   const initial = esc((u.name || u.email || '?').trim().charAt(0).toUpperCase());
   $('user-avatar').innerHTML = u.picture
@@ -441,9 +558,9 @@ function applyRoleUI() {
   if (!admin || !S.consoleBranch) S.consoleBranch = S.myBranch || '';   // พนักงานล็อกสาขาตัวเองเสมอ
 }
 
-const DEMO_HIDDEN_TABS = ['console', 'disposals'];   // demo ยังไม่โชว์ เช็คสต็อก/จำหน่าย
+const LITE_HIDDEN_TABS = ['console', 'disposals'];   // ยังไม่โชว์ เช็คสต็อก/จำหน่าย จนกว่าจะติดตั้งระบบหลังบ้านใหม่
 function visibleTabs() {
-  return TABS.filter(t => (!t.admin || isAdmin()) && !(DEMO && DEMO_HIDDEN_TABS.includes(t.id)));
+  return TABS.filter(t => (!t.admin || isAdmin()) && !(LITE && LITE_HIDDEN_TABS.includes(t.id)));
 }
 
 function renderNav() {
@@ -1472,7 +1589,7 @@ function renderDetail() {
     ${it.status === DISPOSED ? `<div class="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700 flex items-center gap-2 flex-wrap">
       ${ic('package-x')} อุปกรณ์นี้จำหน่ายแล้ว
       ${it.disposalId ? `<button onclick="openReport('${esc(it.disposalId)}')" class="ml-auto btn btn-sm btn-secondary">${ic('file-text')} ดูรายงาน ${esc(it.disposalId)}</button>` : ''}</div>`
-    : DEMO ? '' : `<div class="grid grid-cols-2 gap-2">
+    : LITE ? '' : `<div class="grid grid-cols-2 gap-2">
       <button onclick="openCheckSheet(${it.row})" class="btn btn-primary">${ic('clipboard-check')} บันทึกผลตรวจ</button>
       <button onclick="openDisposeSheet(${it.row})" class="btn btn-danger-soft">${ic('file-minus')} แจ้งจำหน่าย</button>
     </div>`}
@@ -1486,7 +1603,7 @@ function renderDetail() {
         ${infoCell('ประกัน', warrantyChip(it.warranty, true))}
         ${infoCell('ลงทะเบียน', sub(esc(thaiDateTime(it.createdAt)), it.createdBy))}
         ${infoCell('แก้ไขล่าสุด', it.updatedAt ? sub(esc(thaiDateTime(it.updatedAt)), it.updatedBy) : '<span class="text-slate-400">-</span>')}
-        ${DEMO ? '' : infoCell('ตรวจนับล่าสุด', it.lastCheckAt
+        ${LITE ? '' : infoCell('ตรวจนับล่าสุด', it.lastCheckAt
           ? sub(checkedThisRound(it) ? checkChip(it) : `${esc(it.lastCheckResult)} · ${esc(thaiDateTime(it.lastCheckAt))} <span class="text-xs text-slate-400">(รอบก่อน)</span>`, it.lastCheckBy)
           : '<span class="text-slate-400">ยังไม่เคยตรวจนับ</span>', 'col-span-2')}
       </div>
@@ -1497,6 +1614,17 @@ function renderDetail() {
     </div>
 
     <div class="rounded-2xl bg-slate-50/80 ring-1 ring-inset ring-slate-100 p-4 space-y-3">
+      ${LEGACY ? `
+      <div>
+        <p class="label">${ic('cpu')} สเปค / รายละเอียด</p>
+        <p class="text-sm text-slate-700 whitespace-pre-wrap min-h-[1.25rem]">${esc(it.spec) || '<span class="text-slate-400">-</span>'}</p>
+      </div>
+      <div>
+        <p class="label">${ic('sticky-note')} หมายเหตุ</p>
+        <p class="text-sm text-slate-700 whitespace-pre-wrap min-h-[1.25rem]">${esc(it.note) || '<span class="text-slate-400">-</span>'}</p>
+      </div>
+      <p class="text-xs text-amber-800 bg-amber-50 ring-1 ring-inset ring-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
+        ${ic('info', 'w-3.5 h-3.5')} การแก้ไขสเปค/หมายเหตุ จะเปิดใช้เมื่อติดตั้งระบบหลังบ้านตัวใหม่</p>` : `
       <div>
         <label class="label" for="d-spec">${ic('cpu')} สเปค / รายละเอียด</label>
         <textarea id="d-spec" rows="2" class="field">${esc(it.spec)}</textarea>
@@ -1505,15 +1633,15 @@ function renderDetail() {
         <label class="label" for="d-note">${ic('sticky-note')} หมายเหตุ</label>
         <textarea id="d-note" rows="3" class="field">${esc(it.note)}</textarea>
       </div>
-      <button onclick="saveSpecNote(this)" class="btn btn-soft w-full">${ic('save')} บันทึกสเปค & หมายเหตุ</button>
+      <button onclick="saveSpecNote(this)" class="btn btn-soft w-full">${ic('save')} บันทึกสเปค & หมายเหตุ</button>`}
     </div>
 
-    ${DEMO ? '' : admin ? adminToolsHTML(it) : `<p class="text-xs text-slate-500 rounded-xl bg-slate-50 px-3.5 py-2.5 flex items-center gap-2">${ic('lock', 'w-3.5 h-3.5')} การเปลี่ยนสถานะ ย้ายสาขา หรือแก้ไขข้อมูลหลัก ทำได้โดยแอดมินเท่านั้น</p>`}
+    ${LITE ? '' : admin ? adminToolsHTML(it) : `<p class="text-xs text-slate-500 rounded-xl bg-slate-50 px-3.5 py-2.5 flex items-center gap-2">${ic('lock', 'w-3.5 h-3.5')} การเปลี่ยนสถานะ ย้ายสาขา หรือแก้ไขข้อมูลหลัก ทำได้โดยแอดมินเท่านั้น</p>`}
 
-    <div>
+    ${LEGACY ? '' : `<div>
       <p class="label">${ic('history')} ประวัติการเปลี่ยนแปลง</p>
       <div id="d-history" class="space-y-3 pt-1"><div class="skeleton h-10"></div><div class="skeleton h-10"></div></div>
-    </div>
+    </div>`}
   </div>`;
 }
 
@@ -1656,6 +1784,7 @@ document.addEventListener('click', e => {
 });
 
 async function loadItemHistory() {
+  if (LEGACY || !$('d-history')) return;
   const it = currentDetail();
   if (!it) return;
   const res = await api('history', { code: it.code, limit: 30 });
@@ -1739,8 +1868,8 @@ function renderDashboard() {
   }).join('');
 
   // ความคืบหน้าตรวจนับเดือนนี้ รายสาขา
-  $('dash-check-section').classList.toggle('hidden', DEMO);
-  if (DEMO) { renderQuality(q); renderActivity(); return; }
+  $('dash-check-section').classList.toggle('hidden', LITE);
+  if (LITE) { renderQuality(q); if (!LEGACY) renderActivity(); return; }
   $('dash-round').textContent = roundLabel();
   let sumDone = 0, sumActive = 0;
   $('dash-checks').innerHTML = BRANCH_LIST.map(b => {
@@ -1768,7 +1897,7 @@ function renderDashboard() {
 }
 
 function renderQuality(q) {
-  const admin = isAdmin() && !DEMO;   // demo ไม่มีเครื่องมือแอดมิน (ปุ่มรวมชื่อ)
+  const admin = isAdmin() && !LITE;   // โหมดนี้ยังไม่มีเครื่องมือแอดมิน (ปุ่มรวมชื่อ)
   const col = (title, count, body) => `<div><p class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">${title}
       <span class="badge ${count ? 'bg-red-50 text-red-700 ring-red-600/20' : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'}">${count}</span></p>
     <div class="space-y-2 max-h-80 overflow-y-auto scroll-thin pr-1">${count ? body : `<p class="text-xs text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2 flex items-center gap-1.5">${ic('check', 'w-3.5 h-3.5')} ไม่พบปัญหา</p>`}</div></div>`;
@@ -1787,7 +1916,7 @@ function renderQuality(q) {
   $('dash-quality').innerHTML =
     col('รหัสซ้ำ', q.dups.length, dupHTML) +
     col('สาขาไม่ถูกต้อง', q.unknown.length, unkHTML) +
-    col('ชื่อรุ่นเดียวกันแต่สะกดต่างกัน', q.variants.length, (admin || DEMO ? '' : '<p class="text-xs text-slate-400">แอดมินสามารถรวมชื่อได้</p>') + varHTML);
+    col('ชื่อรุ่นเดียวกันแต่สะกดต่างกัน', q.variants.length, (admin || LITE ? '' : '<p class="text-xs text-slate-400">แอดมินสามารถรวมชื่อได้</p>') + varHTML);
 }
 
 async function mergeNames(i, btn) {
@@ -1913,7 +2042,7 @@ function exportCSV() {
 // ==================== Boot ====================
 // ==================== PWA (ติดตั้งเป็นแอป) ====================
 function initPWA() {
-  if (DEMO) return;
+  if (LITE) return;
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW register failed', e));
   }
@@ -1962,6 +2091,14 @@ async function boot() {
       $('demo-sub').textContent = 'หน้าตัวอย่าง ใช้ข้อมูลสมมติ ยังไม่ได้เชื่อมระบบเข้าสู่ระบบจริง';
       document.querySelectorAll('.login-only').forEach(el => el.classList.add('hidden'));
     }
+  }
+  if (LEGACY) {
+    $('login-screen').style.display = 'none';
+    S.session = 'legacy';
+    const cached = loadBootCache();
+    afterAuth(LEGACY_USER, cached ? cached.items : null);
+    if (cached) loadItems(true); else if (!S.loaded) loadItems();
+    return;
   }
   if (DEMO) {
     $('login-screen').style.display = 'none';
