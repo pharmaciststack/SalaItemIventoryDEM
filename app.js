@@ -1946,7 +1946,7 @@ function dismissIosTip() {
 }
 
 async function boot() {
-  $('footer-version').textContent = 'v' + APP_VERSION + (MOCK ? ' (Mock)' : '');
+  $('footer-version').textContent = 'v' + APP_VERSION + (DEMO ? ' (ตัวอย่าง)' : MOCK ? ' (Mock)' : '');
   initRegisterForm();
   initSearch();
   initPrint();

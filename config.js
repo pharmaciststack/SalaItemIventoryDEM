@@ -1,7 +1,7 @@
 // =====================================================
 // ตั้งค่าระบบ — แก้ไขไฟล์นี้ไฟล์เดียวตอน Deploy
 // =====================================================
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.0.0';
 
 // 1. Client ID เดียวกับระบบแจ้งซ่อม (ต้องเพิ่ม origin ของเว็บนี้ใน Google Cloud Console ด้วย)
 const GOOGLE_CLIENT_ID = '854838901494-cuhmkrl29oj80i12apt7no01k763r3o2.apps.googleusercontent.com';
