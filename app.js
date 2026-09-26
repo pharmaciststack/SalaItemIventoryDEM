@@ -12,6 +12,11 @@ const LEGACY = !DEMO && !/^https:\/\//.test(APPS_SCRIPT_URL) &&
   !new URLSearchParams(location.search).has('mock');
 const MOCK = DEMO || (!LEGACY && IS_LOCAL && (new URLSearchParams(location.search).has('mock') || !/^https:\/\//.test(APPS_SCRIPT_URL)));
 const LITE = DEMO || LEGACY;   // ซ่อนเมนู/ปุ่มที่ระบบหลังบ้านยังไม่รองรับ
+// เปิด/ปิดฟีเจอร์จาก config.js (โหมด demo/ระบบเดิม ปิดทั้งคู่เสมอ)
+const F = {
+  check:   !LITE && (typeof FEATURE_STOCK_CHECK === 'undefined' || !!FEATURE_STOCK_CHECK),
+  dispose: !LITE && (typeof FEATURE_DISPOSAL === 'undefined' || !!FEATURE_DISPOSAL),
+};
 const SESSION_KEY = MOCK ? 'inv_session_mock' : 'inv_session';
 
 const CATS = [
@@ -558,9 +563,10 @@ function applyRoleUI() {
   if (!admin || !S.consoleBranch) S.consoleBranch = S.myBranch || '';   // พนักงานล็อกสาขาตัวเองเสมอ
 }
 
-const LITE_HIDDEN_TABS = ['console', 'disposals'];   // ยังไม่โชว์ เช็คสต็อก/จำหน่าย จนกว่าจะติดตั้งระบบหลังบ้านใหม่
 function visibleTabs() {
-  return TABS.filter(t => (!t.admin || isAdmin()) && !(LITE && LITE_HIDDEN_TABS.includes(t.id)));
+  return TABS.filter(t => (!t.admin || isAdmin())
+    && !(t.id === 'console' && !F.check)
+    && !(t.id === 'disposals' && !F.dispose));
 }
 
 function renderNav() {
@@ -1589,10 +1595,10 @@ function renderDetail() {
     ${it.status === DISPOSED ? `<div class="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700 flex items-center gap-2 flex-wrap">
       ${ic('package-x')} อุปกรณ์นี้จำหน่ายแล้ว
       ${it.disposalId ? `<button onclick="openReport('${esc(it.disposalId)}')" class="ml-auto btn btn-sm btn-secondary">${ic('file-text')} ดูรายงาน ${esc(it.disposalId)}</button>` : ''}</div>`
-    : LITE ? '' : `<div class="grid grid-cols-2 gap-2">
-      <button onclick="openCheckSheet(${it.row})" class="btn btn-primary">${ic('clipboard-check')} บันทึกผลตรวจ</button>
-      <button onclick="openDisposeSheet(${it.row})" class="btn btn-danger-soft">${ic('file-minus')} แจ้งจำหน่าย</button>
-    </div>`}
+    : (F.check || F.dispose) ? `<div class="grid ${F.check && F.dispose ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
+      ${F.check ? `<button onclick="openCheckSheet(${it.row})" class="btn btn-primary">${ic('clipboard-check')} บันทึกผลตรวจ</button>` : ''}
+      ${F.dispose ? `<button onclick="openDisposeSheet(${it.row})" class="btn btn-danger-soft">${ic('file-minus')} แจ้งจำหน่าย</button>` : ''}
+    </div>` : ''}
     ${sameCode > 1 ? `<div class="rounded-2xl bg-red-50 ring-1 ring-inset ring-red-100 text-red-800 text-xs px-3.5 py-2.5 flex gap-2">${ic('alert-triangle', 'w-4 h-4 mt-px')}<span>รหัสนี้ซ้ำกับอุปกรณ์อื่นอีก ${sameCode - 1} รายการ ${admin ? '— แก้ไขรหัสได้ที่ "แก้ไขข้อมูลหลัก" ด้านล่าง แล้วพิมพ์ QR ใหม่' : '— กรุณาแจ้งแอดมิน'}</span></div>` : ''}
 
     <div class="grid sm:grid-cols-[1fr_auto] gap-5 items-start">
@@ -1603,7 +1609,7 @@ function renderDetail() {
         ${infoCell('ประกัน', warrantyChip(it.warranty, true))}
         ${infoCell('ลงทะเบียน', sub(esc(thaiDateTime(it.createdAt)), it.createdBy))}
         ${infoCell('แก้ไขล่าสุด', it.updatedAt ? sub(esc(thaiDateTime(it.updatedAt)), it.updatedBy) : '<span class="text-slate-400">-</span>')}
-        ${LITE ? '' : infoCell('ตรวจนับล่าสุด', it.lastCheckAt
+        ${!F.check ? '' : infoCell('ตรวจนับล่าสุด', it.lastCheckAt
           ? sub(checkedThisRound(it) ? checkChip(it) : `${esc(it.lastCheckResult)} · ${esc(thaiDateTime(it.lastCheckAt))} <span class="text-xs text-slate-400">(รอบก่อน)</span>`, it.lastCheckBy)
           : '<span class="text-slate-400">ยังไม่เคยตรวจนับ</span>', 'col-span-2')}
       </div>
@@ -1660,7 +1666,7 @@ function adminToolsHTML(it) {
     ${it.status === DISPOSED && it.disposalId ? '' : section('refresh-cw', 'เปลี่ยนสถานะ', `
       <select id="d-status" class="field field-sm">${statusOptions(it.status === DISPOSED ? '' : it.status, it.status === DISPOSED ? '-- เลือกสถานะใหม่ --' : undefined, [DISPOSED])}</select>
       <input id="d-status-note" class="field field-sm" placeholder="หมายเหตุ เช่น ส่งซ่อมร้าน ABC, เลขใบแจ้งซ่อม">
-      <p class="text-xs text-slate-400">การจำหน่ายให้ใช้ปุ่ม "แจ้งจำหน่าย" ด้านบน เพื่อออกรายงานพร้อมรูปถ่าย</p>
+      <p class="text-xs text-slate-400">${F.dispose ? 'การจำหน่ายให้ใช้ปุ่ม "แจ้งจำหน่าย" ด้านบน เพื่อออกรายงานพร้อมรูปถ่าย' : 'สถานะ "จำหน่ายแล้ว" ปิดใช้ชั่วคราว (ระบบจำหน่ายอยู่ระหว่างพัฒนา)'}</p>
       <button onclick="doSetStatus(this)" class="btn btn-dark btn-sm w-full">บันทึกสถานะ</button>`)}
     ${section('arrow-left-right', 'ย้ายสาขา', `
       <select id="d-branch" class="field field-sm">${branchOptions(BRANCH_BY_CODE[branchCode(it.branch)] || '', '-- เลือกสาขาปลายทาง --')}</select>
@@ -1868,8 +1874,8 @@ function renderDashboard() {
   }).join('');
 
   // ความคืบหน้าตรวจนับเดือนนี้ รายสาขา
-  $('dash-check-section').classList.toggle('hidden', LITE);
-  if (LITE) { renderQuality(q); if (!LEGACY) renderActivity(); return; }
+  $('dash-check-section').classList.toggle('hidden', !F.check);
+  if (!F.check) { renderQuality(q); if (!LEGACY) renderActivity(); return; }
   $('dash-round').textContent = roundLabel();
   let sumDone = 0, sumActive = 0;
   $('dash-checks').innerHTML = BRANCH_LIST.map(b => {
