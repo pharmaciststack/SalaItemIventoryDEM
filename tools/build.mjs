@@ -38,6 +38,8 @@ html = html.replace(/<!-- ICON-SPRITE:START -->[\s\S]*?<!-- ICON-SPRITE:END -->/
 execFileSync(process.execPath, [rel('node_modules/tailwindcss/lib/cli.js'),
   '-c', rel('tailwind.config.js'), '-i', rel('src/styles.css'), '-o', rel('app.css'), '--minify'],
   { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
+// บังคับ LF เพื่อให้ hash เหมือนกันทุกเครื่อง (Windows/Mac/Linux)
+writeFileSync(rel('app.css'), read('app.css').split(String.fromCharCode(13) + NL).join(NL));
 
 // ── 3. Version stamps ────────────────────────────────
 const versions = {};
