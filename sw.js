@@ -4,7 +4,7 @@
 // - ไลบรารีจาก CDN (ระบุเวอร์ชันแน่นอน) และฟอนต์: ใช้จากแคชก่อน
 // - ไม่แคช API (Apps Script), Google Sign-In และรูปจาก Google Drive
 // ชื่อแคชด้านล่างถูกเปลี่ยนอัตโนมัติโดย `npm run build`
-const CACHE = 'sala-inventory-e7e52346';
+const CACHE = 'sala-inventory-cc527bd1';
 const SHELL = ['./', './index.html', './logo.png', './icon-192.png', './icon-512.png', './manifest.webmanifest'];
 const CDN_HOSTS = ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 

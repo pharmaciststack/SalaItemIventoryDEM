@@ -1,0 +1,147 @@
+/* ต้นฉบับ CSS — สร้างเป็น app.css ด้วย `npm run build` (ห้ามแก้ app.css โดยตรง) */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body { @apply min-h-full bg-slate-50 text-slate-800 antialiased; }
+  ::selection { @apply bg-brand-200 text-brand-900; }
+  input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+}
+
+@layer components {
+  /* ไอคอน (SVG sprite จาก Lucide) */
+  .ico { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+  /* การ์ด */
+  .card { @apply bg-white rounded-2xl ring-1 ring-slate-900/[.06] shadow-card; }
+  .card-hover { @apply transition duration-150 hover:shadow-lift hover:ring-brand-300/70; }
+  .icon-tile { @apply w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-brand-50 text-brand-700; }
+  .icon-tile .ico { @apply w-5 h-5; }
+
+  /* ฟอร์ม */
+  .label { @apply flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 mb-1.5; }
+  .label .ico { @apply w-3.5 h-3.5 text-slate-400; }
+  .req { @apply text-red-500 font-bold; }
+  .field { @apply block w-full h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-[15px] text-slate-800 placeholder:text-slate-400 transition
+                  focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 disabled:bg-slate-50 disabled:text-slate-500; }
+  textarea.field { @apply h-auto py-2.5 leading-relaxed resize-none; }
+  select.field { @apply pr-9 appearance-none bg-no-repeat; background-image: var(--chevron); background-position: right .7rem center; background-size: 1rem; }
+  .field-sm { @apply h-10 text-sm rounded-lg px-3; }
+  select.field-sm { @apply pr-8; }
+  textarea.field-sm { @apply h-auto py-2; }
+  .field.error { @apply border-red-400 ring-4 ring-red-500/10; }
+
+  /* ปุ่ม */
+  .btn { @apply inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-sm font-semibold whitespace-nowrap select-none transition
+                 active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/25; }
+  .btn .ico { @apply w-4 h-4; }
+  .btn-sm { @apply h-9 px-3 rounded-lg text-[13px]; }
+  .btn-lg { @apply h-12 px-5 text-[15px]; }
+  .btn-icon { @apply px-0 w-11; }
+  .btn-sm.btn-icon { @apply w-9; }
+  .btn-primary { @apply bg-brand-600 text-white shadow-sm shadow-brand-800/25 hover:bg-brand-700; }
+  .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:ring-slate-300; }
+  .btn-soft { @apply bg-brand-50 text-brand-700 hover:bg-brand-100; }
+  .btn-ghost { @apply text-slate-600 hover:bg-slate-100; }
+  .btn-dark { @apply bg-slate-900 text-white hover:bg-slate-800; }
+  .btn-danger { @apply bg-red-600 text-white shadow-sm shadow-red-800/20 hover:bg-red-700; }
+  .btn-danger-soft { @apply bg-white text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-50; }
+
+  /* ป้าย */
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap; }
+  .badge .ico { @apply w-3 h-3; }
+
+  /* แท็บเมนู */
+  .tab { @apply relative inline-flex items-center gap-2 h-12 px-3 sm:px-4 text-sm font-medium text-slate-500 whitespace-nowrap shrink-0 transition-colors hover:text-slate-900; }
+  .tab .ico { @apply w-[18px] h-[18px]; }
+  .tab::after { content: ''; @apply absolute left-3 right-3 bottom-0 h-[3px] rounded-t-full bg-brand-600 scale-x-0 transition-transform; }
+  .tab.active { @apply text-brand-700 font-semibold; }
+  .tab.active::after { @apply scale-x-100; }
+
+  /* ชิปตัวกรอง */
+  .chip { @apply inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-sm font-medium bg-white text-slate-600 ring-1 ring-inset ring-slate-200 whitespace-nowrap shrink-0 transition-colors hover:bg-slate-50; }
+  .chip.active { @apply bg-slate-900 text-white ring-slate-900 hover:bg-slate-800; }
+  .chip .count { @apply text-xs tabular-nums opacity-70; }
+
+  /* รายการ */
+  .row-card { @apply card card-hover w-full flex items-center gap-3 p-3.5 text-left; }
+  .skeleton { @apply rounded-lg bg-slate-200/70 animate-pulse; }
+  .empty { @apply flex flex-col items-center justify-center text-center gap-2 py-14 text-slate-400; }
+  .empty .ico { @apply w-10 h-10; stroke-width: 1.5; }
+
+  /* หน้าต่าง */
+  .overlay { background: rgba(15, 23, 42, .45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .sheet { @apply bg-white w-full max-h-[94vh] sm:max-h-[90vh] overflow-y-auto overscroll-contain rounded-t-3xl sm:rounded-3xl shadow-2xl animate-sheet-up; }
+  .sheet-head { @apply sticky top-0 z-10 flex items-start gap-3 px-5 py-4 bg-white/95 backdrop-blur border-b border-slate-100; }
+
+  .kv { @apply grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm; }
+  .kv > dt { @apply text-slate-500; }
+  .kv > dd { @apply text-slate-800 break-words min-w-0; }
+}
+
+@layer utilities {
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+:root {
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* ── อื่นๆ ── */
+#login-screen { transition: opacity .3s ease; }
+#login-screen.hiding { opacity: 0; pointer-events: none; }
+details[open] .chev { transform: rotate(90deg); }
+#reader video, #c-reader video { object-fit: cover; }
+.loading-bar { background: linear-gradient(90deg, #0b8541, #7fe6a8, #0b8541); background-size: 200% 100%; }
+
+/* ── QR sticker (ใช้ทั้งบนจอและตอนพิมพ์) ── */
+.stk-sheet { display: flex; flex-wrap: wrap; gap: 2mm; align-content: flex-start; }
+.stk { width: var(--w, 3cm); border: 1px solid #000; border-radius: 4px; padding: 1.5mm; box-sizing: border-box;
+       display: flex; flex-direction: column; align-items: center; background: #fff; color: #000;
+       break-inside: avoid; page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.stk-name { font-weight: 700; font-size: calc(var(--w, 3cm) * .095); line-height: 1.15; text-align: center; word-break: break-word;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; width: 100%; margin-bottom: .8mm; }
+.stk-qr { width: calc(var(--w, 3cm) * .74); aspect-ratio: 1 / 1; }
+.stk-qr svg { width: 100%; height: 100%; display: block; }
+.stk-code { font-size: calc(var(--w, 3cm) * .085); font-weight: 600; letter-spacing: .02em; margin-top: .6mm;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* ── รายงาน A4 (รายงานจำหน่าย / ใบตรวจนับ) ── */
+.rpt { position: relative; font-size: 12px; color: #111; padding: 4mm 6mm; }
+.rpt-head { display: flex; align-items: center; gap: 4mm; border-bottom: 2px solid #0b8541; padding-bottom: 3mm; margin-bottom: 4mm; }
+.rpt-head img { width: 14mm; height: 14mm; object-fit: contain; }
+.rpt-title { flex: 1; }
+.rpt-title h1 { font-size: 16px; font-weight: 700; margin: 0; }
+.rpt-title p { font-size: 14px; font-weight: 600; margin: 1mm 0 0; color: #0a6c36; }
+.rpt-no { text-align: right; font-size: 11px; line-height: 1.5; }
+.rpt-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+.rpt-table th, .rpt-table td { border: 1px solid #999; padding: 1.8mm 2.5mm; text-align: left; vertical-align: top; }
+.rpt-table th { width: 38mm; background: #f3f4f6; font-weight: 600; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.rpt-sub { font-weight: 700; margin: 0 0 2mm; }
+.rpt-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-bottom: 6mm; }
+.rpt-photos img { width: 100%; height: 55mm; object-fit: contain; border: 1px solid #ccc; background: #fafafa; }
+.rpt-signs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; margin-top: 10mm; text-align: center; font-size: 11px; break-inside: avoid; }
+.rpt-signs .line { border-bottom: 1px dotted #333; height: 12mm; margin-bottom: 1mm; }
+.rpt-signs p { margin: .8mm 0; }
+.rpt-void { position: absolute; top: 60mm; left: 0; right: 0; text-align: center; font-size: 60px; font-weight: 800; color: rgba(220,38,38,.18); transform: rotate(-18deg); pointer-events: none; }
+.rpt-sum { margin: 0 0 3mm; font-weight: 600; }
+.rpt-list { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.rpt-list th, .rpt-list td { border: 1px solid #999; padding: 1.3mm 1.8mm; text-align: left; vertical-align: top; }
+.rpt-list th { background: #f3f4f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.rpt-list tr { break-inside: avoid; }
+.rpt-list .mono { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }
+
+#print-area { display: none; }
+@media print {
+  @page { size: A4 portrait; margin: 6mm; }
+  body.printing { background: #fff !important; height: auto; }
+  body.printing > *:not(#print-area) { display: none !important; }
+  body.printing #print-area { display: block !important; }
+}

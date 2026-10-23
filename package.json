@@ -1,0 +1,14 @@
+{
+  "name": "sala-inventory",
+  "version": "2.2.0",
+  "private": true,
+  "description": "ระบบลงทะเบียนอุปกรณ์ บริษัท ศาลาโอสถรีเทล จำกัด",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "python -m http.server 3000"
+  },
+  "devDependencies": {
+    "lucide-static": "0.263.0",
+    "tailwindcss": "3.4.17"
+  }
+}
