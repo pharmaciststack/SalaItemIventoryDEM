@@ -1675,16 +1675,8 @@ function itemToolsHTML(it) {
       <p class="text-xs text-amber-700 flex items-center gap-1">${ic('alert-triangle', 'w-3.5 h-3.5')} ถ้าเปลี่ยนรหัส ต้องพิมพ์ QR ใหม่ติดที่เครื่อง</p>
       <button onclick="saveCoreFields(this)" class="btn btn-dark btn-sm w-full">บันทึกข้อมูลอุปกรณ์</button>`);
 
-  if (!admin) {
-    return `<div class="space-y-2">
-      <p class="text-xs font-bold text-brand-700 flex items-center gap-1.5">${ic('pencil', 'w-3.5 h-3.5')} แก้ไขได้เฉพาะอุปกรณ์ของสาขา ${esc(S.myBranch || '')}</p>
-      ${editSection}
-      <p class="text-xs text-slate-500 rounded-xl bg-slate-50 px-3.5 py-2.5 flex items-center gap-2">${ic('lock', 'w-3.5 h-3.5')} เปลี่ยนสถานะ ย้ายสาขา และลบรายการ ทำได้โดยแอดมินเท่านั้น</p>
-    </div>`;
-  }
-
   return `<div class="space-y-2">
-    <p class="text-xs font-bold text-brand-700 flex items-center gap-1.5">${ic('shield-check', 'w-3.5 h-3.5')} เครื่องมือแอดมิน</p>
+    <p class="text-xs font-bold text-brand-700 flex items-center gap-1.5">${ic(admin ? 'shield-check' : 'store', 'w-3.5 h-3.5')} ${admin ? 'เครื่องมือแอดมิน' : `จัดการอุปกรณ์ของสาขา ${esc(S.myBranch || '')}`}</p>
     ${it.status === DISPOSED && it.disposalId ? '' : section('refresh-cw', 'เปลี่ยนสถานะ', `
       <select id="d-status" class="field field-sm">${statusOptions(it.status === DISPOSED ? '' : it.status, it.status === DISPOSED ? '-- เลือกสถานะใหม่ --' : undefined, [DISPOSED])}</select>
       <input id="d-status-note" class="field field-sm" placeholder="หมายเหตุ เช่น ส่งซ่อมร้าน ABC, เลขใบแจ้งซ่อม">
@@ -1694,10 +1686,12 @@ function itemToolsHTML(it) {
       <select id="d-branch" class="field field-sm">${branchOptions(BRANCH_BY_CODE[branchCode(it.branch)] || '', '-- เลือกสาขาปลายทาง --')}</select>
       <input id="d-branch-note" class="field field-sm" placeholder="เหตุผล/หมายเหตุการย้าย">
       <p class="text-xs text-slate-400">รหัสและ QR เดิมใช้ต่อได้ ไม่ต้องพิมพ์สติกเกอร์ใหม่ · ประวัติการย้ายจะถูกบันทึกไว้</p>
+      ${admin ? '' : `<p class="text-xs text-amber-700 flex items-center gap-1">${ic('alert-triangle', 'w-3.5 h-3.5')} เมื่อย้ายออกจากสาขาแล้ว สาขาจะไม่เห็นเครื่องนี้อีก ต้องให้สาขาปลายทางหรือแอดมินแก้ไข</p>`}
       <button onclick="doTransfer(this)" class="btn btn-dark btn-sm w-full">ยืนยันการย้าย</button>`)}
     ${editSection}
     ${section('trash-2', 'ลบรายการ', `
-      <p class="text-xs text-slate-500">ใช้เมื่อบันทึกผิดหรือเป็นข้อมูลทดสอบ — ถ้าอุปกรณ์เลิกใช้งาน ให้ "แจ้งจำหน่าย" แทน เพื่อเก็บประวัติไว้</p>
+      <p class="text-xs text-slate-500">ใช้เมื่อบันทึกผิดหรือเป็นข้อมูลทดสอบ — ถ้าอุปกรณ์เลิกใช้งาน ให้แจ้งจำหน่ายแทน เพื่อเก็บประวัติไว้</p>
+      <p class="text-xs text-amber-700 flex items-center gap-1">${ic('alert-triangle', 'w-3.5 h-3.5')} ลบแล้วรายการจะหายจากระบบ (ข้อมูลเดิมถูกเก็บไว้ในชีต History ให้แอดมินกู้คืนได้)</p>
       <input id="del-reason" class="field field-sm" placeholder="เหตุผลการลบ (จำเป็น)">
       <button onclick="doDelete(this)" class="btn btn-danger btn-sm w-full">ลบรายการนี้</button>`, 'text-red-600')}
   </div>`;

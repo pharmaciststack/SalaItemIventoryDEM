@@ -60,8 +60,9 @@ const CHECK_RESULTS = ['ปกติ', 'ชำรุด', 'ไม่พบ'];
 const DISPOSE_METHODS = ['ขาย', 'ทิ้ง/ทำลาย', 'ส่งคืนผู้ขาย/บริษัท', 'บริจาค', 'สูญหาย', 'อื่นๆ'];
 
 // ฟิลด์ที่แก้ไขได้ตามสิทธิ์
-// พนักงานแก้ข้อมูลอุปกรณ์ได้ แต่เฉพาะเครื่องในสาขาตัวเอง (บังคับด้วย requireScope ใน updateItem)
-// ส่วนเปลี่ยนสถานะ / ย้ายสาขา / ลบ ยังเป็นสิทธิ์แอดมินเท่านั้น
+// พนักงานจัดการอุปกรณ์ในสาขาตัวเองได้ทั้งหมด (แก้ข้อมูล / เปลี่ยนสถานะ / ย้ายสาขา / ลบ)
+// ทุกคำสั่งผ่าน requireScope — แตะเครื่องของสาขาอื่นไม่ได้
+// คำสั่งที่ยังเป็นของแอดมินเท่านั้น: รวมชื่อรุ่น (bulkRename) และยกเลิกรายงานจำหน่าย (voidDisposal)
 const STAFF_FIELDS = ['name', 'category', 'machineNo', 'warranty', 'spec', 'note', 'code'];
 const ADMIN_FIELDS = ['name', 'category', 'machineNo', 'warranty', 'spec', 'note', 'code'];
 const FIELD_LIMITS = { name: 200, code: 40, spec: 2000, note: 2000, branch: 80, machineNo: 10 };
@@ -114,9 +115,9 @@ function route(body) {
     case 'dispose':      return disposeItem(session, info, body);
     case 'disposals':    return listDisposals(info);
     case 'voidDisposal': requireAdmin(info); return voidDisposal(session, body);
-    case 'setStatus':    requireAdmin(info); return setStatus(session, body);
-    case 'transfer':     requireAdmin(info); return transferItem(session, body);
-    case 'delete':       requireAdmin(info); return deleteItem(session, body);
+    case 'setStatus':    return setStatus(session, info, body);
+    case 'transfer':     return transferItem(session, info, body);
+    case 'delete':       return deleteItem(session, info, body);
     case 'bulkRename':   requireAdmin(info); return bulkRename(session, body);
   }
   throw fail('unknown_action', 'ไม่รู้จักคำสั่ง: ' + action);
@@ -331,7 +332,7 @@ function updateItem(session, info, body) {
   });
 }
 
-function setStatus(session, body) {
+function setStatus(session, info, body) {
   const status = String(body.status || '');
   if (STATUSES.indexOf(status) === -1) throw fail('invalid', 'สถานะไม่ถูกต้อง');
   if (status === DISPOSED_STATUS) throw fail('invalid', 'การจำหน่ายต้องทำผ่าน "แจ้งจำหน่าย" เพื่อออกรายงาน');
@@ -340,6 +341,7 @@ function setStatus(session, body) {
     const ctx = itemContext();
     const rowNum = locateRow(ctx, body.row, body.code);
     const current = readItem(ctx, rowNum);
+    requireScope(info, current.branch);
     if (current.status === status) return { ok: true, changed: [], item: current };
     if (current.status === DISPOSED_STATUS && current.disposalId) {
       throw fail('invalid', 'อุปกรณ์นี้มีรายงานจำหน่าย ' + current.disposalId + ' — ยกเลิกรายงานก่อนเปลี่ยนสถานะ');
@@ -351,7 +353,7 @@ function setStatus(session, body) {
   });
 }
 
-function transferItem(session, body) {
+function transferItem(session, info, body) {
   const branch = cleanText(body.branch, FIELD_LIMITS.branch);
   if (!branch) throw fail('invalid', 'กรุณาเลือกสาขาปลายทาง');
   const note = cleanText(body.note, 500);
@@ -359,6 +361,7 @@ function transferItem(session, body) {
     const ctx = itemContext();
     const rowNum = locateRow(ctx, body.row, body.code);
     const current = readItem(ctx, rowNum);
+    requireScope(info, current.branch);   // ย้ายได้เฉพาะเครื่องที่อยู่ในสาขาตัวเอง
     if (current.branch === branch) return { ok: true, changed: [], item: current };
     ctx.sheet.getRange(rowNum, ctx.map[COL.branch] + 1).setValue(branch);
     touch(ctx, rowNum, session.email);
@@ -367,13 +370,14 @@ function transferItem(session, body) {
   });
 }
 
-function deleteItem(session, body) {
+function deleteItem(session, info, body) {
   const reason = cleanText(body.reason, 500);
   if (!reason) throw fail('invalid', 'กรุณาระบุเหตุผลการลบ');
   return withLock(() => {
     const ctx = itemContext();
     const rowNum = locateRow(ctx, body.row, body.code);
     const current = readItem(ctx, rowNum);
+    requireScope(info, current.branch);
     // เก็บข้อมูลทั้งแถวไว้ในประวัติ เผื่อต้องกู้คืน
     logHistory(current.code, current.name, 'delete', '', JSON.stringify(current), '', session.email, reason);
     ctx.sheet.deleteRow(rowNum);

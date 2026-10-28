@@ -189,7 +189,7 @@
     }
     if (me.status !== 'approved') return fail('not_approved', 'บัญชียังไม่ได้รับการอนุมัติ');
     const admin = me.role === 'admin';
-    if (['setStatus', 'transfer', 'delete', 'bulkRename', 'voidDisposal'].includes(a) && !admin) return fail('forbidden', 'เฉพาะแอดมินเท่านั้น');
+    if (['bulkRename', 'voidDisposal'].includes(a) && !admin) return fail('forbidden', 'เฉพาะแอดมินเท่านั้น');
 
     switch (a) {
       case 'list':
@@ -318,6 +318,7 @@
         if (body.status === DISPOSED) return fail('invalid', 'การจำหน่ายต้องทำผ่าน "แจ้งจำหน่าย" เพื่อออกรายงาน');
         const idx = locate(db, body.row, body.code);
         const cur = db.items[idx];
+        requireScope(me, cur.branch);
         if (cur.status === body.status) return { ok: true, changed: [], item: item(db, idx) };
         if (cur.status === DISPOSED && cur.disposalId) return fail('invalid', 'อุปกรณ์นี้มีรายงานจำหน่าย ' + cur.disposalId + ' — ยกเลิกรายงานก่อนเปลี่ยนสถานะ');
         log(db, cur.code, cur.name, 'status', 'status', cur.status, body.status, email, body.note);
@@ -329,6 +330,7 @@
         if (!body.branch) return fail('invalid', 'กรุณาเลือกสาขาปลายทาง');
         const idx = locate(db, body.row, body.code);
         const cur = db.items[idx];
+        requireScope(me, cur.branch);
         if (cur.branch === body.branch) return { ok: true, changed: [], item: item(db, idx) };
         log(db, cur.code, cur.name, 'transfer', 'branch', cur.branch, body.branch, email, body.note);
         Object.assign(cur, { branch: body.branch, updatedAt: now(), updatedBy: email });
@@ -339,6 +341,7 @@
         if (!String(body.reason || '').trim()) return fail('invalid', 'กรุณาระบุเหตุผลการลบ');
         const idx = locate(db, body.row, body.code);
         const cur = db.items[idx];
+        requireScope(me, cur.branch);
         log(db, cur.code, cur.name, 'delete', '', JSON.stringify(cur), '', email, body.reason);
         db.items.splice(idx, 1);
         return { ok: true };
