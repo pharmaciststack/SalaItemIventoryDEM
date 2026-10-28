@@ -1642,7 +1642,7 @@ function renderDetail() {
       <button onclick="saveSpecNote(this)" class="btn btn-soft w-full">${ic('save')} บันทึกสเปค & หมายเหตุ</button>`}
     </div>
 
-    ${LITE ? '' : admin ? adminToolsHTML(it) : `<p class="text-xs text-slate-500 rounded-xl bg-slate-50 px-3.5 py-2.5 flex items-center gap-2">${ic('lock', 'w-3.5 h-3.5')} การเปลี่ยนสถานะ ย้ายสาขา หรือแก้ไขข้อมูลหลัก ทำได้โดยแอดมินเท่านั้น</p>`}
+    ${LITE ? '' : itemToolsHTML(it)}
 
     ${LEGACY ? '' : `<div>
       <p class="label">${ic('history')} ประวัติการเปลี่ยนแปลง</p>
@@ -1651,7 +1651,9 @@ function renderDetail() {
   </div>`;
 }
 
-function adminToolsHTML(it) {
+// กล่องเครื่องมือในหน้ารายละเอียด
+// พนักงาน: แก้ไขข้อมูลอุปกรณ์ของสาขาตัวเองได้ · แอดมิน: เพิ่มเปลี่ยนสถานะ / ย้ายสาขา / ลบ
+function itemToolsHTML(it) {
   const section = (icon, title, body, color = 'text-slate-800') => `
     <details class="rounded-2xl ring-1 ring-inset ring-slate-200 open:bg-slate-50/50">
       <summary class="px-4 py-3 flex items-center gap-2 text-sm font-semibold ${color}">
@@ -1661,6 +1663,26 @@ function adminToolsHTML(it) {
       <div class="px-4 pb-4 space-y-2">${body}</div>
     </details>`;
   const small = t => `<label class="block text-xs text-slate-500 mb-1">${t}</label>`;
+  const admin = isAdmin();
+  const editSection = section('pencil', 'แก้ไขข้อมูลอุปกรณ์', `
+      <div>${small('ชื่ออุปกรณ์')}<input id="e-name" class="field field-sm" value="${esc(it.name)}"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>${small('หมวดหมู่')}<select id="e-category" class="field field-sm">${categoryOptions(it.category)}</select></div>
+        <div>${small('เครื่องที่')}<input id="e-machine" class="field field-sm" value="${esc(it.machineNo)}"></div>
+        <div>${small('วันหมดประกัน')}<input id="e-warranty" type="date" class="field field-sm" value="${esc(it.warranty)}"></div>
+        <div>${small('รหัสอุปกรณ์')}<input id="e-code" class="field field-sm font-mono uppercase" value="${esc(it.code)}"></div>
+      </div>
+      <p class="text-xs text-amber-700 flex items-center gap-1">${ic('alert-triangle', 'w-3.5 h-3.5')} ถ้าเปลี่ยนรหัส ต้องพิมพ์ QR ใหม่ติดที่เครื่อง</p>
+      <button onclick="saveCoreFields(this)" class="btn btn-dark btn-sm w-full">บันทึกข้อมูลอุปกรณ์</button>`);
+
+  if (!admin) {
+    return `<div class="space-y-2">
+      <p class="text-xs font-bold text-brand-700 flex items-center gap-1.5">${ic('pencil', 'w-3.5 h-3.5')} แก้ไขได้เฉพาะอุปกรณ์ของสาขา ${esc(S.myBranch || '')}</p>
+      ${editSection}
+      <p class="text-xs text-slate-500 rounded-xl bg-slate-50 px-3.5 py-2.5 flex items-center gap-2">${ic('lock', 'w-3.5 h-3.5')} เปลี่ยนสถานะ ย้ายสาขา และลบรายการ ทำได้โดยแอดมินเท่านั้น</p>
+    </div>`;
+  }
+
   return `<div class="space-y-2">
     <p class="text-xs font-bold text-brand-700 flex items-center gap-1.5">${ic('shield-check', 'w-3.5 h-3.5')} เครื่องมือแอดมิน</p>
     ${it.status === DISPOSED && it.disposalId ? '' : section('refresh-cw', 'เปลี่ยนสถานะ', `
@@ -1673,16 +1695,7 @@ function adminToolsHTML(it) {
       <input id="d-branch-note" class="field field-sm" placeholder="เหตุผล/หมายเหตุการย้าย">
       <p class="text-xs text-slate-400">รหัสและ QR เดิมใช้ต่อได้ ไม่ต้องพิมพ์สติกเกอร์ใหม่ · ประวัติการย้ายจะถูกบันทึกไว้</p>
       <button onclick="doTransfer(this)" class="btn btn-dark btn-sm w-full">ยืนยันการย้าย</button>`)}
-    ${section('pencil', 'แก้ไขข้อมูลหลัก', `
-      <div>${small('ชื่ออุปกรณ์')}<input id="e-name" class="field field-sm" value="${esc(it.name)}"></div>
-      <div class="grid grid-cols-2 gap-2">
-        <div>${small('หมวดหมู่')}<select id="e-category" class="field field-sm">${categoryOptions(it.category)}</select></div>
-        <div>${small('เครื่องที่')}<input id="e-machine" class="field field-sm" value="${esc(it.machineNo)}"></div>
-        <div>${small('วันหมดประกัน')}<input id="e-warranty" type="date" class="field field-sm" value="${esc(it.warranty)}"></div>
-        <div>${small('รหัสอุปกรณ์')}<input id="e-code" class="field field-sm font-mono uppercase" value="${esc(it.code)}"></div>
-      </div>
-      <p class="text-xs text-amber-700 flex items-center gap-1">${ic('alert-triangle', 'w-3.5 h-3.5')} ถ้าเปลี่ยนรหัส ต้องพิมพ์ QR ใหม่ติดที่เครื่อง</p>
-      <button onclick="saveCoreFields(this)" class="btn btn-dark btn-sm w-full">บันทึกข้อมูลหลัก</button>`)}
+    ${editSection}
     ${section('trash-2', 'ลบรายการ', `
       <p class="text-xs text-slate-500">ใช้เมื่อบันทึกผิดหรือเป็นข้อมูลทดสอบ — ถ้าอุปกรณ์เลิกใช้งาน ให้ "แจ้งจำหน่าย" แทน เพื่อเก็บประวัติไว้</p>
       <input id="del-reason" class="field field-sm" placeholder="เหตุผลการลบ (จำเป็น)">

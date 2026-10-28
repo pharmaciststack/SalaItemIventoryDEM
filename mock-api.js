@@ -14,7 +14,7 @@
   const DISPOSED = 'จำหน่ายแล้ว';
   const CHECK_RESULTS = ['ปกติ', 'ชำรุด', 'ไม่พบ'];
   const DISPOSE_METHODS = ['ขาย', 'ทิ้ง/ทำลาย', 'ส่งคืนผู้ขาย/บริษัท', 'บริจาค', 'สูญหาย', 'อื่นๆ'];
-  const STAFF_FIELDS = ['spec', 'note'];
+  const STAFF_FIELDS = ['name', 'category', 'machineNo', 'warranty', 'spec', 'note', 'code'];   // แก้ได้เฉพาะสาขาตัวเอง (requireScope)
   const ADMIN_FIELDS = ['name', 'category', 'machineNo', 'warranty', 'spec', 'note', 'code'];
 
   const MODELS = {

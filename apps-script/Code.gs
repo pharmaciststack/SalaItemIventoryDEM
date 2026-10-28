@@ -60,7 +60,9 @@ const CHECK_RESULTS = ['ปกติ', 'ชำรุด', 'ไม่พบ'];
 const DISPOSE_METHODS = ['ขาย', 'ทิ้ง/ทำลาย', 'ส่งคืนผู้ขาย/บริษัท', 'บริจาค', 'สูญหาย', 'อื่นๆ'];
 
 // ฟิลด์ที่แก้ไขได้ตามสิทธิ์
-const STAFF_FIELDS = ['spec', 'note'];
+// พนักงานแก้ข้อมูลอุปกรณ์ได้ แต่เฉพาะเครื่องในสาขาตัวเอง (บังคับด้วย requireScope ใน updateItem)
+// ส่วนเปลี่ยนสถานะ / ย้ายสาขา / ลบ ยังเป็นสิทธิ์แอดมินเท่านั้น
+const STAFF_FIELDS = ['name', 'category', 'machineNo', 'warranty', 'spec', 'note', 'code'];
 const ADMIN_FIELDS = ['name', 'category', 'machineNo', 'warranty', 'spec', 'note', 'code'];
 const FIELD_LIMITS = { name: 200, code: 40, spec: 2000, note: 2000, branch: 80, machineNo: 10 };
 
