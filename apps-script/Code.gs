@@ -6,7 +6,7 @@
 // (สร้าง "New deployment" ใหม่ — deployment เดิมจะยังทำงานกับหน้าเว็บเก่าได้ตามปกติ)
 // =====================================================
 
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.3.0';
 
 // ── ตั้งค่า ───────────────────────────────────────────
 const ITEM_SHEET     = 'Sheet1';     // ชีตข้อมูลอุปกรณ์ (ห้ามเปลี่ยนชื่อ)
@@ -59,6 +59,9 @@ const DISPOSED_STATUS = 'จำหน่ายแล้ว';
 const CHECK_RESULTS = ['ปกติ', 'ชำรุด', 'ไม่พบ'];
 const DISPOSE_METHODS = ['ขาย', 'ทิ้ง/ทำลาย', 'ส่งคืนผู้ขาย/บริษัท', 'บริจาค', 'สูญหาย', 'อื่นๆ'];
 
+// คำสั่งที่สงวนไว้ให้แอดมิน (นอกจากนี้พนักงานทำได้ในขอบเขตสาขาตัวเอง)
+const ADMIN_ONLY_ACTIONS = ['bulkRename', 'voidDisposal'];
+
 // ฟิลด์ที่แก้ไขได้ตามสิทธิ์
 // พนักงานจัดการอุปกรณ์ในสาขาตัวเองได้ทั้งหมด (แก้ข้อมูล / เปลี่ยนสถานะ / ย้ายสาขา / ลบ)
 // ทุกคำสั่งผ่าน requireScope — แตะเครื่องของสาขาอื่นไม่ได้
@@ -70,7 +73,9 @@ const FIELD_LIMITS = { name: 200, code: 40, spec: 2000, note: 2000, branch: 80, 
 // ── Entry points ──────────────────────────────────────
 function doGet(e) {
   // เปิด URL นี้ในเบราว์เซอร์เพื่อตรวจว่า deploy เวอร์ชันล่าสุดแล้ว
-  return json({ ok: true, app: 'sala-inventory', version: APP_VERSION, time: new Date().toISOString() });
+  // เปิดให้ตรวจได้ว่า deployment นี้รันโค้ดเวอร์ชันไหน และให้สิทธิ์พนักงานแค่ไหน (ไม่มีข้อมูลลับ)
+  return json({ ok: true, app: 'sala-inventory', version: APP_VERSION, time: new Date().toISOString(),
+                staffFields: STAFF_FIELDS, adminOnly: ADMIN_ONLY_ACTIONS });
 }
 
 function doPost(e) {
@@ -105,6 +110,7 @@ function route(body) {
   if (action === 'registerUser') return registerUser(session, info, body.branch);
 
   if (!info.isSuper && (!info.registered || info.status !== 'approved')) throw fail('not_approved', 'บัญชียังไม่ได้รับการอนุมัติ');
+  if (ADMIN_ONLY_ACTIONS.indexOf(action) !== -1) requireAdmin(info);
 
   switch (action) {
     case 'list':         return listItems(info);
@@ -114,11 +120,11 @@ function route(body) {
     case 'check':        return checkItem(session, info, body);
     case 'dispose':      return disposeItem(session, info, body);
     case 'disposals':    return listDisposals(info);
-    case 'voidDisposal': requireAdmin(info); return voidDisposal(session, body);
+    case 'voidDisposal': return voidDisposal(session, body);
     case 'setStatus':    return setStatus(session, info, body);
     case 'transfer':     return transferItem(session, info, body);
     case 'delete':       return deleteItem(session, info, body);
-    case 'bulkRename':   requireAdmin(info); return bulkRename(session, body);
+    case 'bulkRename':   return bulkRename(session, body);
   }
   throw fail('unknown_action', 'ไม่รู้จักคำสั่ง: ' + action);
 }
