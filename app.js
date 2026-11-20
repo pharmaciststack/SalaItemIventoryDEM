@@ -114,7 +114,12 @@ function loadScript(src) {
     document.head.appendChild(s);
   });
 }
-function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+function debounce(fn, ms) {
+  let t;
+  const d = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  d.now = (...a) => { clearTimeout(t); fn(...a); };   // เขียนทันที ใช้กับการเปลี่ยนแปลงที่ย้อนกลับไม่ได้
+  return d;
+}
 let loadingCount = 0;
 function setLoading(on) {
   loadingCount = Math.max(0, loadingCount + (on ? 1 : -1));
@@ -479,9 +484,10 @@ async function recheckApproval(btn) {
   });
 }
 
-function signOut(skipConfirm) {
-  if (DEMO) { if (confirm('เริ่มดูตัวอย่างใหม่ (ล้างข้อมูลสมมติ)?')) mockReset(); return; }
-  if (!skipConfirm && !confirm('ต้องการออกจากระบบ?')) return;
+async function signOut(skipConfirm) {
+  if (DEMO) { mockReset(); return; }   // mockReset ถามเองอยู่แล้ว
+  if (!skipConfirm && !(await askConfirm({
+    title: 'ออกจากระบบ?', confirmText: 'ออกจากระบบ', icon: 'log-out' }))) return;
   api('logout');
   clearSession();
   try { google.accounts.id.disableAutoSelect(); } catch (e) {}
@@ -489,8 +495,10 @@ function signOut(skipConfirm) {
 }
 
 function mockApproveMe() { MockAPI.approve(S.user.email); recheckApproval(); }
-function mockReset() {
-  if (!confirm('รีเซ็ตข้อมูลทดสอบทั้งหมดกลับเป็นค่าเริ่มต้น?')) return;
+async function mockReset() {
+  if (!(await askConfirm({ title: 'เริ่มดูตัวอย่างใหม่?',
+    body: 'ข้อมูลสมมติที่กรอกไว้จะกลับเป็นค่าเริ่มต้นทั้งหมด',
+    confirmText: 'เริ่มใหม่', tone: 'warn' }))) return;
   MockAPI.reset();
   try { localStorage.removeItem(BOOT_KEY); } catch (e) {}
   location.reload();
@@ -1573,7 +1581,8 @@ async function openReport(id, known) {
 async function doVoidReport(btn) {
   const reason = $('void-reason').value.trim();
   if (!reason) { showToast('กรุณาระบุเหตุผลการยกเลิก', 'warn'); return; }
-  if (!confirm('ยกเลิกรายงาน ' + S.reportId + '?')) return;
+  if (!(await askConfirm({ title: 'ยกเลิกรายงาน ' + S.reportId + '?',
+    confirmText: 'ยกเลิกรายงาน', tone: 'danger' }))) return;
   await busy(btn, async () => {
     const res = await api('voidDisposal', { id: S.reportId, reason });
     if (!res.ok) { showToast(errMsg(res), 'error'); return; }
@@ -1604,8 +1613,59 @@ function closeDetail() {
   if (!sheetOpen()) document.body.style.overflow = '';
   S.detailRow = null;
 }
+// ==================== กล่องยืนยัน ====================
+// confirm() ของเบราว์เซอร์คืน false โดยไม่แจ้ง เมื่อผู้ใช้ติ๊ก "ป้องกันไม่ให้หน้านี้สร้างกล่องโต้ตอบเพิ่ม"
+// หรือเปิดใน WebView บางตัว — ปุ่มจะกดไม่ติดโดยไม่บอกอะไรเลย
+const CONFIRM_TONE = {
+  danger: { icon: 'alert-triangle', chip: 'bg-red-50 text-red-600',      btn: 'btn-danger'  },
+  warn:   { icon: 'alert-triangle', chip: 'bg-amber-50 text-amber-700',  btn: 'btn-dark'    },
+  normal: { icon: 'info',           chip: 'bg-brand-50 text-brand-700',  btn: 'btn-primary' },
+};
+let confirmResolve = null;
+
+// คืน Promise<boolean> — ใช้แทน confirm() ทุกที่
+// ข้อความใส่ด้วย textContent จึงไม่ต้อง esc() แม้ชื่ออุปกรณ์จะมี < > ก็ตาม
+function askConfirm(opts) {
+  const o = typeof opts === 'string' ? { title: opts } : (opts || {});
+  const tone = o.tone || 'normal';
+  const t = CONFIRM_TONE[tone] || CONFIRM_TONE.normal;
+  if (confirmResolve) closeConfirm(false);   // กันกล่องซ้อนกัน
+  $('confirm-icon').className = 'w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ' + t.chip;
+  $('confirm-icon').innerHTML = ic(o.icon || t.icon, 'w-5 h-5');
+  $('confirm-title').textContent = o.title || 'ยืนยันการทำรายการ';
+  $('confirm-body').textContent = o.body || '';
+  $('confirm-body').classList.toggle('hidden', !o.body);
+  const yes = $('confirm-yes');
+  yes.className = 'btn ' + t.btn;
+  yes.textContent = o.confirmText || 'ยืนยัน';
+  $('confirm-no').textContent = o.cancelText || 'ยกเลิก';
+  const m = $('confirm-modal');
+  m.classList.remove('hidden'); m.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+  return new Promise(resolve => {
+    confirmResolve = resolve;
+    focusConfirmButton(tone);
+  });
+}
+
+// ปุ่มไหนควรโดนโฟกัสก่อน — ปุ่มที่โฟกัสคือปุ่มที่ Enter จะกด
+function focusConfirmButton(tone) {
+  // TODO(human)
+}
+
+function closeConfirm(answer) {
+  if (!confirmResolve) return;
+  const m = $('confirm-modal');
+  m.classList.add('hidden'); m.classList.remove('flex');
+  if (!sheetOpen() && !S.detailRow) document.body.style.overflow = '';
+  const resolve = confirmResolve;
+  confirmResolve = null;
+  resolve(!!answer);
+}
+
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if (confirmResolve) { closeConfirm(false); return; }   // กล่องยืนยันอยู่บนสุด จึงปิดก่อน
   if (sheetOpen()) closeSheet(); else if (S.detailRow) closeDetail();
 });
 
@@ -1737,6 +1797,19 @@ function itemToolsHTML(it) {
   </div>`;
 }
 
+// คำสั่งอื่นทุกตัวอัปเดต S.items ทันทีผ่าน applyItemUpdate() แต่ delete ไม่มีคู่ของมัน
+// จึงฝากความหวังไว้กับ loadItems() อย่างเดียว — ถ้าการโหลดรอบนั้นพลาด
+// (เน็ตหลุด / เซสชันหมด / ปิดแอปก่อนโหลดเสร็จ) รายการที่ลบไปแล้วจะค้างอยู่บนหน้าจอ
+function removeItemLocal(row) {
+  const i = S.items.findIndex(x => x.row === row);
+  if (i < 0) return;
+  S.items.splice(i, 1);
+  S.activity = null;
+  $('record-count-badge').textContent = S.items.length.toLocaleString() + ' รายการ';
+  saveBootCache.now();   // เขียนแคชทันที กัน debounce 600ms ค้างรายการเก่าถ้าผู้ใช้ปิดแอปพอดี
+  renderCurrent();
+}
+
 function applyItemUpdate(item) {
   const i = S.items.findIndex(x => x.row === item.row);
   if (i >= 0) S.items[i] = item; else S.items.push(item);
@@ -1775,7 +1848,9 @@ async function doTransfer(btn) {
   const it = currentDetail();
   const branch = $('d-branch').value;
   if (!branch) { showToast('กรุณาเลือกสาขาปลายทาง', 'warn'); return; }
-  if (!confirm(`ย้าย "${it.name}" จาก ${branchLabel(it.branch)} ไป ${branch}?`)) return;
+  if (!(await askConfirm({ title: `ย้าย "${it.name}" ไป ${branch}?`,
+    body: `จาก ${branchLabel(it.branch)} · รหัสและ QR เดิมใช้ต่อได้`,
+    confirmText: 'ย้ายสาขา', icon: 'arrow-left-right' }))) return;
   await busy(btn, async () => {
     const res = await api('transfer', { row: it.row, code: it.code, branch, note: $('d-branch-note').value.trim() });
     await handleMutation(res, 'ย้ายสาขาเรียบร้อย');
@@ -1787,7 +1862,9 @@ async function saveCoreFields(btn) {
                    warranty: $('e-warranty').value, code: $('e-code').value.trim().toUpperCase() };
   Object.keys(fields).forEach(k => { if (String(fields[k]) === String(it[k] || '')) delete fields[k]; });
   if (!Object.keys(fields).length) { showToast('ไม่มีข้อมูลเปลี่ยนแปลง', 'info'); return; }
-  if (fields.code && !confirm(`เปลี่ยนรหัสเป็น ${fields.code}?\nต้องพิมพ์ QR ใหม่ติดที่เครื่อง`)) return;
+  if (fields.code && !(await askConfirm({ title: `เปลี่ยนรหัสเป็น ${fields.code}?`,
+    body: 'สติ๊กเกอร์ QR เดิมที่ติดอยู่จะสแกนไม่เจอ ต้องพิมพ์ใหม่ติดทับ',
+    confirmText: 'เปลี่ยนรหัส', tone: 'warn' }))) return;
   await busy(btn, async () => {
     const res = await api('update', { row: it.row, code: it.code, fields });
     await handleMutation(res, 'บันทึกข้อมูลหลักแล้ว');
@@ -1797,13 +1874,16 @@ async function doDelete(btn) {
   const it = currentDetail();
   const reason = $('del-reason').value.trim();
   if (!reason) { showToast('กรุณาระบุเหตุผลการลบ', 'warn'); $('del-reason').focus(); return; }
-  if (!confirm(`ลบ "${it.name}" (${it.code}) ออกจากระบบ?\nข้อมูลเดิมจะถูกเก็บไว้ในชีต History`)) return;
+  if (!(await askConfirm({ title: `ลบ "${it.name}" ออกจากระบบ?`,
+    body: `${it.code} · ${branchLabel(it.branch)}\nข้อมูลเดิมถูกเก็บไว้ในชีต History ให้แอดมินกู้คืนได้`,
+    confirmText: 'ลบรายการ', tone: 'danger', icon: 'trash-2' }))) return;
   await busy(btn, async () => {
     const res = await api('delete', { row: it.row, code: it.code, reason });
     if (!res.ok) { showToast(errMsg(res), 'error'); return; }
+    removeItemLocal(it.row);   // ตัดออกจากหน้าจอทันที ไม่รอผล loadItems
     closeDetail();
-    showToast('ลบรายการแล้ว');
-    await loadItems(true);   // เลขแถวเปลี่ยน ต้องโหลดใหม่
+    showToast('ลบ ' + it.code + ' แล้ว');
+    await loadItems(true);   // เลขแถวของรายการอื่นเลื่อน ต้องโหลดใหม่
   });
 }
 
@@ -1977,7 +2057,8 @@ async function mergeNames(i, btn) {
   const to = $('merge-' + i).value;
   const from = group.map(([n]) => n).filter(n => n !== to);
   const count = group.filter(([n]) => n !== to).reduce((s, [, c]) => s + c, 0);
-  if (!confirm(`เปลี่ยนชื่อ ${count} รายการ เป็น "${to}"?`)) return;
+  if (!(await askConfirm({ title: `รวมชื่อ ${count} รายการ?`,
+    body: `เปลี่ยนเป็น "${to}"`, confirmText: 'รวมชื่อ', tone: 'warn' }))) return;
   await busy(btn, async () => {
     const res = await api('bulkRename', { from, to });
     if (!res.ok) { showToast(errMsg(res), 'error'); return; }

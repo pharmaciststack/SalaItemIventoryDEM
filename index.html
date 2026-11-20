@@ -19,10 +19,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- app.css สร้างจาก src/styles.css ด้วย `npm run build` -->
-  <link rel="stylesheet" href="app.css?v=3eb3b077">
+  <link rel="stylesheet" href="app.css?v=b9a5a207">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
   <script src="config.js?v=1a088571" defer></script>
-  <script src="app.js?v=f669f17c" defer></script>
+  <script src="app.js?v=074d0b37" defer></script>
 </head>
 <body>
 <!-- ICON-SPRITE:START -->
@@ -512,6 +512,25 @@
 <!-- ===== Sheet Modal (ตรวจนับ / แจ้งจำหน่าย / รายงาน) ===== -->
 <div id="sheet-modal" class="hidden fixed inset-0 z-[70] overlay items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this) closeSheet()">
   <div class="sheet sm:max-w-xl scroll-thin"><div id="sheet-body"></div></div>
+</div>
+
+<!-- ===== Confirm Modal (แทน confirm() ของเบราว์เซอร์ ซึ่งคืน false เงียบๆ เมื่อถูกบล็อก) ===== -->
+<div id="confirm-modal" class="hidden fixed inset-0 z-[200] overlay items-end sm:items-center justify-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="confirm-title"
+     onclick="if(event.target===this) closeConfirm(false)">
+  <div class="bg-white w-full sm:max-w-sm rounded-3xl shadow-2xl animate-sheet-up p-5">
+    <div class="flex items-start gap-3">
+      <span id="confirm-icon" class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"></span>
+      <div class="flex-1 min-w-0 pt-1">
+        <h2 id="confirm-title" class="text-base font-bold text-slate-900 leading-snug break-words"></h2>
+        <p id="confirm-body" class="text-sm text-slate-500 mt-1 whitespace-pre-line break-words"></p>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mt-5">
+      <button id="confirm-no" type="button" class="btn btn-secondary" onclick="closeConfirm(false)">ยกเลิก</button>
+      <button id="confirm-yes" type="button" class="btn" onclick="closeConfirm(true)"></button>
+    </div>
+  </div>
 </div>
 
 <!-- ===== Toast ===== -->
