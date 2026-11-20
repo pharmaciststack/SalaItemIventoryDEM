@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ระบบลงทะเบียนอุปกรณ์ - บริษัท ศาลาโอสถรีเทล จำกัด</title>
-  <meta name="description" content="ลงทะเบียน ตรวจนับ และจำหน่ายอุปกรณ์ของทุกสาขา — บริษัท ศาลาโอสถรีเทล จำกัด">
+  <meta name="description" content="ลงทะเบียนอุปกรณ์ ออกรหัส QR และค้นหาอุปกรณ์ของทุกสาขา — บริษัท ศาลาโอสถรีเทล จำกัด">
   <link rel="icon" type="image/png" href="logo.png">
   <!-- PWA: ติดตั้งเป็นแอปบน Android / iOS / Windows / macOS -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="app.css?v=3eb3b077">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
   <script src="config.js?v=1a088571" defer></script>
-  <script src="app.js?v=133087fd" defer></script>
+  <script src="app.js?v=f669f17c" defer></script>
 </head>
 <body>
 <!-- ICON-SPRITE:START -->
@@ -40,7 +40,7 @@
       <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-brand-50 ring-1 ring-brand-100 p-2.5"><img src="logo.png" alt="" class="w-full h-full object-contain"></div>
       <p class="text-sm font-semibold text-brand-700">บริษัท ศาลาโอสถรีเทล จำกัด</p>
       <h1 class="text-2xl font-bold text-slate-900 mt-1">ระบบลงทะเบียนอุปกรณ์</h1>
-      <p class="text-sm text-slate-500 mt-2">ลงทะเบียน · ตรวจนับ · จำหน่าย อุปกรณ์ของทุกสาขา</p>
+      <p class="text-sm text-slate-500 mt-2">ลงทะเบียนอุปกรณ์ ออกรหัส QR และค้นหาของทุกสาขา</p>
 
       <p id="login-message" class="hidden mt-6 text-sm text-red-700 bg-red-50 ring-1 ring-red-100 rounded-xl px-3 py-2"></p>
 
@@ -79,7 +79,7 @@
     <div class="text-center mb-6">
       <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-brand-50 ring-1 ring-brand-100 p-2"><img src="logo.png" alt="" class="w-full h-full object-contain"></div>
       <h2 class="text-xl font-bold text-slate-900">ลงทะเบียนใช้งานครั้งแรก</h2>
-      <p class="text-sm text-slate-500 mt-1">ระบุสาขาของคุณ — บัญชีนี้ใช้กับระบบแจ้งซ่อมได้ด้วย</p>
+      <p class="text-sm text-slate-500 mt-1">ระบุสาขาที่คุณประจำอยู่ แล้วรอแอดมินอนุมัติ</p>
     </div>
     <div class="space-y-4">
       <div>
@@ -106,7 +106,7 @@
     <h2 class="text-xl font-bold text-slate-900">รอการอนุมัติ</h2>
     <p class="text-sm text-slate-500 mt-1">บัญชีของคุณอยู่ระหว่างรอแอดมินอนุมัติ</p>
     <div id="pending-email" class="inline-block mt-4 text-sm font-semibold text-amber-800 bg-amber-50 ring-1 ring-amber-200 rounded-full px-4 py-1.5"></div>
-    <p class="text-xs text-slate-400 mt-4">แอดมินอนุมัติได้ที่ระบบแจ้งซ่อม (เมนูจัดการแอดมิน)<br>หรือติดต่อฝ่าย IT / ภก.ปาล์ม</p>
+    <p class="text-xs text-slate-400 mt-4">แจ้งฝ่าย IT / ภก.ปาล์ม เพื่ออนุมัติบัญชี<br>อนุมัติแล้วกด “ตรวจสอบอีกครั้ง” ได้เลย</p>
     <div class="flex gap-2 justify-center flex-wrap mt-6">
       <button onclick="recheckApproval(this)" class="btn btn-soft"><svg class="ico"><use href="#i-refresh-cw"/></svg> ตรวจสอบอีกครั้ง</button>
       <button onclick="signOut(true)" class="btn btn-secondary"><svg class="ico"><use href="#i-log-out"/></svg> ออกจากระบบ</button>
@@ -168,7 +168,7 @@
           <span class="icon-tile"><svg class="ico"><use href="#i-package-plus"/></svg></span>
           <div class="min-w-0">
             <h2 class="text-lg font-bold text-slate-900 leading-tight">ลงทะเบียนอุปกรณ์ใหม่</h2>
-            <p class="text-sm text-slate-500">เลือกหมวดหมู่และสาขา ระบบจะสร้างรหัส QR ให้อัตโนมัติ ·
+            <p class="text-sm text-slate-500">รหัสสร้างจาก หมวดหมู่ + สาขา + วันที่ + เครื่องที่ · แก้เองได้ ·
               <a id="guide-link" href="#" target="_blank" rel="noopener" class="text-brand-700 font-medium hover:underline">คู่มือ</a></p>
           </div>
         </div>
@@ -210,7 +210,8 @@
             </div>
             <div>
               <label class="label" for="f-warranty"><svg class="ico"><use href="#i-shield-check"/></svg> หมดประกัน</label>
-              <input id="f-warranty" type="date" class="field">
+              <input id="f-warranty" type="date" class="field" aria-describedby="warranty-echo">
+              <p id="warranty-echo" class="hidden mt-1.5 text-xs items-center gap-1" aria-live="polite"></p>
             </div>
           </div>
           <p id="machine-hint" class="hidden -mt-2 text-xs text-slate-500"></p>
@@ -372,12 +373,12 @@
     <div class="grid lg:grid-cols-2 gap-5 mb-5">
       <section class="card p-5">
         <h3 class="font-bold text-slate-900">อุปกรณ์ตามหมวดหมู่</h3>
-        <p class="text-xs text-slate-400 mb-4">จำนวนเครื่อง · คลิกเพื่อดูรายการ</p>
+        <p class="text-xs text-slate-400 mb-4">เรียงจากหมวดที่มีมากที่สุด · แตะเพื่อดูรายการ</p>
         <div id="dash-cats" class="space-y-1"></div>
       </section>
       <section class="card p-5">
         <h3 class="font-bold text-slate-900">สถานะอุปกรณ์</h3>
-        <p class="text-xs text-slate-400 mb-4">จำนวนเครื่อง · คลิกเพื่อดูรายการ</p>
+        <p class="text-xs text-slate-400 mb-4">แตะสถานะเพื่อดูรายการเฉพาะสถานะนั้น</p>
         <div id="dash-status" class="space-y-1"></div>
       </section>
     </div>
@@ -393,7 +394,7 @@
     </section>
     <section class="card p-5 mb-5">
       <h3 class="font-bold text-slate-900">อุปกรณ์ตามสาขา</h3>
-      <p class="text-xs text-slate-400 mb-4">จำนวนเครื่องทั้งหมด · <span class="text-amber-700">ส่งซ่อม/ชำรุด</span> · คลิกเพื่อดูรายการ</p>
+      <p class="text-xs text-slate-400 mb-4">จำนวนเครื่องทั้งหมด · เลขส้มคือ<span class="text-amber-700">ส่งซ่อม/ชำรุด</span> · แตะเพื่อดูรายการ</p>
       <div id="dash-branches" class="grid lg:grid-cols-2 gap-x-10 gap-y-0.5"></div>
     </section>
     <div class="grid lg:grid-cols-2 gap-5 mb-5">
@@ -410,7 +411,7 @@
     </div>
     <section id="dash-quality-wrap" class="card p-5 ring-amber-200/80 scroll-mt-16">
       <h3 class="font-bold text-slate-900 flex items-center gap-2"><svg class="ico w-4 h-4 text-amber-600"><use href="#i-shield-alert"/></svg> ตรวจสอบคุณภาพข้อมูล</h3>
-      <p class="text-xs text-slate-400 mb-4">รายการที่ควรแก้ไขเพื่อให้ข้อมูลถูกต้อง</p>
+      <p class="text-xs text-slate-400 mb-4">รหัสซ้ำ · ชื่อรุ่นสะกดไม่ตรงกัน · สาขาหรือเลขเครื่องที่หายไป</p>
       <div id="dash-quality" class="grid lg:grid-cols-3 gap-5"></div>
     </section>
   </main>

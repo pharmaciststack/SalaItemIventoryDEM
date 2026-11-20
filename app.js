@@ -472,8 +472,8 @@ async function recheckApproval(btn) {
   await busy(btn, async () => {
     const res = await api('me', { withItems: true });
     if (res.ok) {
-      if (res.user.status === 'approved') showToast('ได้รับการอนุมัติแล้ว ยินดีต้อนรับ!');
-      else showToast('ยังไม่ได้รับการอนุมัติ', 'warn');
+      if (res.user.status === 'approved') showToast('อนุมัติแล้ว เข้าใช้งานได้เลย');
+      else showToast('ยังรอแอดมินอนุมัติอยู่', 'warn');
       afterAuth(res.user, res.items);
     }
   });
@@ -672,8 +672,8 @@ function skeletonCards(n = 4) {
   return Array.from({ length: n }, () => `<div class="card p-3.5 flex items-center gap-3">
     <div class="skeleton w-11 h-11 rounded-xl"></div><div class="flex-1 space-y-2"><div class="skeleton h-4 w-2/3"></div><div class="skeleton h-3 w-1/3"></div></div></div>`).join('');
 }
-function emptyState(icon, text) {
-  return `<div class="empty md:col-span-2">${ic(icon)}<p class="text-sm">${text}</p></div>`;
+function emptyState(icon, text, action = '') {
+  return `<div class="empty md:col-span-2">${ic(icon)}<p class="text-sm">${text}</p>${action}</div>`;
 }
 // เปิดรายละเอียดเมื่อคลิกการ์ดใดๆ ที่มี data-open
 document.addEventListener('click', e => {
@@ -690,6 +690,7 @@ function initRegisterForm() {
   $('f-category').addEventListener('change', () => { suggestMachine(); regenCode(); renderRegisterSide(); });
   $('f-branch').addEventListener('change', () => { suggestMachine(); regenCode(); renderRegisterSide(); });
   $('f-machine').addEventListener('input', () => regenCode());
+  ['change', 'input'].forEach(ev => $('f-warranty').addEventListener(ev, renderWarrantyEcho));
   $('f-code').addEventListener('input', () => {
     S.codeManual = true;
     $('f-code').value = $('f-code').value.toUpperCase().replace(/[^A-Z0-9_-]/g, '');
@@ -829,6 +830,32 @@ function checkDuplicateCode() {
   renderCodePreview(!!dup);
 }
 
+// ช่อง <input type="date"> ของเบราว์เซอร์แสดง mm/dd/yyyy เมื่อเครื่องตั้งเป็น en-US
+// จึงอ่านวันที่ระบบรับได้กลับมาให้อ่านยืนยันก่อนบันทึก
+function warrantyEchoHTML(w) {
+  const wi = warrantyInfo(w);
+  if (!wi) return '';
+  // จำนวนวันคือตัวจับวัน/เดือนสลับ: 11/04 กับ 04/11 ห่างกัน 210 วัน — สะดุดกว่าดูวันที่เฉยๆ
+  const n = Math.abs(wi.days);
+  const yrs = n >= 365 ? ` \u2248 ${+(n / 365).toFixed(1)} ปี` : '';
+  const line = (cls, icon, tail) =>
+    `${ic(icon, 'w-3.5 h-3.5 shrink-0 ' + cls)}<span class="${cls}">ระบบรับเป็น <b class="font-semibold">${thaiDate(w)}</b> · ${tail}</span>`;
+  // ของเก่าที่หมดประกันแล้วเป็นเรื่องปกติในระบบนี้ จึงใช้สีเตือน ไม่ใช่สีผิดพลาด
+  if (wi.days < 0)   return line('text-amber-700', 'shield-off', `หมดประกันไปแล้ว ${n} วัน${yrs}`);
+  if (wi.days === 0) return line('text-amber-700', 'shield-alert', 'หมดประกันวันนี้');
+  if (wi.days <= 90) return line('text-amber-700', 'shield-alert', `เหลืออีก ${n} วัน`);
+  return line('text-slate-500', 'shield-check', `อีก ${n} วัน${yrs}`);
+}
+
+function renderWarrantyEcho() {
+  const el = $('warranty-echo');
+  if (!el) return;
+  const html = warrantyEchoHTML($('f-warranty').value) || '';
+  el.innerHTML = html;
+  el.classList.toggle('hidden', !html);
+  el.classList.toggle('flex', !!html);
+}
+
 async function submitItem() {
   const item = {
     category: $('f-category').value, branch: $('f-branch').value, machineNo: $('f-machine').value.trim(),
@@ -860,9 +887,10 @@ async function submitItem() {
     $('record-count-badge').textContent = S.items.length.toLocaleString() + ' รายการ';
     saveBootCache();
     showRegResult(res.item);
-    showToast('บันทึกสำเร็จ!');
+    showToast('บันทึก ' + res.item.code + ' แล้ว');
     // ล้างฟอร์ม เก็บหมวดหมู่ สาขา และชื่อรุ่นไว้ดูรายการรุ่นเดียวกัน
     ['f-name', 'f-warranty', 'f-spec', 'f-note'].forEach(id => { $(id).value = ''; });
+    renderWarrantyEcho();
     $('name-hint').classList.add('hidden');
     S.codeManual = false;
     suggestMachine();
@@ -894,7 +922,7 @@ function registerNextSame() {
   renderRegisterSide();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   $('f-spec').focus({ preventScroll: true });
-  showToast('เตรียมข้อมูลเครื่องถัดไปแล้ว ตรวจสอบแล้วกดบันทึก', 'info');
+  showToast('คงชื่อรุ่นและสาขาไว้ เลขเครื่องเป็น ' + $('f-machine').value + ' · กรอกสเปคแล้วกดบันทึก', 'info');
 }
 
 // ── แผงด้านข้าง: อุปกรณ์รุ่นเดียวกัน / หมวดเดียวกันในสาขา / ลงทะเบียนล่าสุด ──
@@ -1027,8 +1055,19 @@ function renderSearch() {
   $('s-status-line').textContent = S.loadedAt ? 'อัปเดต ' + S.loadedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '';
   $('s-results').innerHTML = list.length
     ? list.slice(0, S.limit).map(it => itemCard(it)).join('')
-    : S.loaded ? emptyState('package-search', 'ไม่พบอุปกรณ์ที่ตรงกับเงื่อนไข') : skeletonCards(6);
+    : S.loaded ? searchEmptyState(q, [fb, fc, fs, fw]) : skeletonCards(6);
   $('s-more').classList.toggle('hidden', list.length <= S.limit);
+}
+
+// ตันเพราะตัวกรอง กับ ยังไม่มีข้อมูลเลย คือคนละเรื่อง — อย่าบอกเหมือนกัน
+function searchEmptyState(q, filters) {
+  const on = filters.filter(Boolean).length + (q ? 1 : 0);
+  if (!S.items.length) return emptyState('package-open', 'ยังไม่มีอุปกรณ์ในระบบ',
+    `<button type="button" onclick="switchTab('register')" class="btn btn-sm btn-primary mt-2">${ic('package-plus')} ลงทะเบียนเครื่องแรก</button>`);
+  const text = q ? `ไม่พบ “${esc(q)}”` + (on > 1 ? ' ภายใต้ตัวกรองที่เลือกไว้' : '')
+    : 'ไม่มีอุปกรณ์ที่ตรงกับตัวกรองนี้';
+  return emptyState('package-search', text, on
+    ? `<button type="button" onclick="clearSearchFilters()" class="btn btn-sm btn-secondary mt-2">${ic('refresh-cw')} ล้างตัวกรอง ${on} อย่าง</button>` : '');
 }
 
 function clearSearchFilters() {
@@ -1599,7 +1638,7 @@ function renderDetail() {
       ${F.check ? `<button onclick="openCheckSheet(${it.row})" class="btn btn-primary">${ic('clipboard-check')} บันทึกผลตรวจ</button>` : ''}
       ${F.dispose ? `<button onclick="openDisposeSheet(${it.row})" class="btn btn-danger-soft">${ic('file-minus')} แจ้งจำหน่าย</button>` : ''}
     </div>` : ''}
-    ${sameCode > 1 ? `<div class="rounded-2xl bg-red-50 ring-1 ring-inset ring-red-100 text-red-800 text-xs px-3.5 py-2.5 flex gap-2">${ic('alert-triangle', 'w-4 h-4 mt-px')}<span>รหัสนี้ซ้ำกับอุปกรณ์อื่นอีก ${sameCode - 1} รายการ ${admin ? '— แก้ไขรหัสได้ที่ "แก้ไขข้อมูลหลัก" ด้านล่าง แล้วพิมพ์ QR ใหม่' : '— กรุณาแจ้งแอดมิน'}</span></div>` : ''}
+    ${sameCode > 1 ? `<div class="rounded-2xl bg-red-50 ring-1 ring-inset ring-red-100 text-red-800 text-xs px-3.5 py-2.5 flex gap-2">${ic('alert-triangle', 'w-4 h-4 mt-px')}<span>รหัสนี้ซ้ำกับอุปกรณ์อื่นอีก ${sameCode - 1} รายการ — แก้รหัสได้ที่ “แก้ไขข้อมูลอุปกรณ์” ด้านล่าง แล้วพิมพ์ QR ใหม่</span></div>` : ''}
 
     <div class="grid sm:grid-cols-[1fr_auto] gap-5 items-start">
       <div class="grid grid-cols-2 gap-x-4 gap-y-3.5">
@@ -1652,7 +1691,8 @@ function renderDetail() {
 }
 
 // กล่องเครื่องมือในหน้ารายละเอียด
-// พนักงาน: แก้ไขข้อมูลอุปกรณ์ของสาขาตัวเองได้ · แอดมิน: เพิ่มเปลี่ยนสถานะ / ย้ายสาขา / ลบ
+// ทุกบัญชีที่อนุมัติแล้ว: เปลี่ยนสถานะ / ย้ายสาขา / แก้ไขข้อมูล / ลบ — จำกัดเฉพาะอุปกรณ์ในสาขาตัวเอง (แอดมินทุกสาขา)
+// สิทธิ์จริงบังคับที่ Code.gs — กล่องนี้แค่แสดงปุ่ม
 function itemToolsHTML(it) {
   const section = (icon, title, body, color = 'text-slate-800') => `
     <details class="rounded-2xl ring-1 ring-inset ring-slate-200 open:bg-slate-50/50">
